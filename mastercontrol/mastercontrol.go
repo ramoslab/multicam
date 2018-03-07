@@ -36,7 +36,8 @@ func main() {
 
     http.HandleFunc("/", lns.Handler)
     http.HandleFunc("/request", lns.RequestHandler)
-    
+    http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
     go http.ListenAndServe(":8040", nil)
 
     for str := range c {

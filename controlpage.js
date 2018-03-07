@@ -14,6 +14,10 @@ function get_answer() {
         console.log(json);
     }
 
+    $.ajax(config).done(done_fct).fail(fail_fct);
+
+}
+
 function fail_fct(xhr, status, errorThrown) {
     console.log("Error: " + errorThrown);
     console.log("Status: " + status);

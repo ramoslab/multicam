@@ -47,7 +47,7 @@ type Page struct {
 
 // Load a page file from disk
 func loadPage() (*Page, error) {
-    filename := "controlpage.html"
+    filename := "static/controlpage.html"
     body, err := ioutil.ReadFile(filename)
     if err != nil {
         return nil, err
@@ -67,3 +67,4 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 func RequestHandler(w http.ResponseWriter, r *http.Request) {
     fmt.Fprintf(w, "%s", "Antwort")
 }
+
