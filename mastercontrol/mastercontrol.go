@@ -4,10 +4,9 @@ package main
 import (
     "fmt"
     "net"
-    "bitbucket.com/andrews2000/recordcontrol"
-    "bitbucket.com/andrews2000/lns"
+    "bitbucket.com/andrews2000/multicam/recordcontrol"
+    "bitbucket.com/andrews2000/multicam/lns"
     "strings"
-    "time"
 )
 
 func main() {
@@ -20,11 +19,11 @@ func main() {
     serv1 := lns.RecUdpServer{Addr: net.UDPAddr{Port: 9999, IP: net.ParseIP("127.0.0.1")}}
     // Data channel
     c := make(chan string)
+    //defer close(c)
     // Goroutine control channel
     q := make(chan bool)
 
     conn, err := net.ListenUDP("udp",&serv1.Addr)
-    conn.SetReadDeadline(time.Now().Add(1 * time.Second))
 
     if err != nil {
         panic(err)
@@ -34,13 +33,12 @@ func main() {
     fmt.Println(rec1.GetState())
 
     go serv1.Run(c,q, conn)
-    go serv1.Test(c,q)
 
     for str := range c {
         parseCommand(str,rec1,q,conn)
     }
 
-    fmt.Println(rec1.GetState())
+    fmt.Println("Current state: ",rec1.GetState())
 }
 
 // Parse commands being received via UDP and initiate execution of the commands
@@ -90,9 +88,8 @@ func execStopRecording(rc recordcontrol.RecordControl) {
 
 // Stop UDP Server and exit
 func stopAndExit(q chan bool, conn *net.UDPConn) {
-    fmt.Println("Shutting down server.")
+    fmt.Println("Closing shutdown channel.")
     close(q)
+    fmt.Println("Closing UDP connection.")
     conn.Close()
-    //q <- true
-    fmt.Println("Kill signal sent.")
 }

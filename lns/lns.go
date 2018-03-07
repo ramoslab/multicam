@@ -5,7 +5,6 @@ package lns
 import (
     "net"
     "fmt"
-    "time"
 )
 
 // Defines the configuration of the server and its functions
@@ -24,6 +23,7 @@ func (rudps RecUdpServer) Run(c chan string, q chan bool, conn *net.UDPConn) {
         select {
             case <- q:
                 fmt.Println("Stopping UDP listener.")
+                close(c)
                 return
             default:
                 n, _, err := conn.ReadFromUDP(buf)
@@ -33,20 +33,6 @@ func (rudps RecUdpServer) Run(c chan string, q chan bool, conn *net.UDPConn) {
                 if err != nil {
                     fmt.Println("Error: ", err)
                 }
-        }
-    }
-}
-
-func (rudps RecUdpServer) Test(c chan string, q chan bool) {
-
-    for {
-        select {
-            case <- q:
-                fmt.Println("Stopping UDP listener.")
-                return
-            default:
-                time.Sleep(1500 * time.Millisecond)
-                c <- "Test"
         }
     }
 }
