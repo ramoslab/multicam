@@ -15,59 +15,75 @@ func main() {
     cfg1 := recordcontrol.RecordConfig{Cameras: []int{1,2}, Sid: "AR", Date: "180305", Loc: "recordings"}
     // Instantiate RecordControl struct 
     rec1 := recordcontrol.RecordControl{State: 0, Config: cfg1, VideoHwState: 0, AudioHwState: 0, DiskSpaceState: 0, SavingLocationState: 0, GstreamerState: 0}
-    // Instantiate RecUdpServer struct
+    // Instantiate RecUdpServer struct and start listening to UDP connection
     serv1 := lns.RecUdpServer{Addr: net.UDPAddr{Port: 9999, IP: net.ParseIP("127.0.0.1")}}
+    conn, err := net.ListenUDP("udp",&serv1.Addr)
+    if err != nil {
+        panic(err)
+    }
     // Data channel
     c := make(chan string)
     //defer close(c)
     // Goroutine control channel
     q := make(chan bool)
 
-    conn, err := net.ListenUDP("udp",&serv1.Addr)
+    fmt.Println("Current state: ",rec1.GetState())
 
-    if err != nil {
-        panic(err)
-    }
-
-
-    fmt.Println(rec1.GetState())
-
+    // Start the routine that listens on UDP
     go serv1.Run(c,q, conn)
 
     for str := range c {
-        parseCommand(str,rec1,q,conn)
+        parseCommand(str,&rec1,q,conn)
     }
 
     fmt.Println("Current state: ",rec1.GetState())
 }
 
 // Parse commands being received via UDP and initiate execution of the commands
-func parseCommand(cmd string, rc recordcontrol.RecordControl, q chan bool, conn *net.UDPConn) {
+func parseCommand(cmd string, rc *recordcontrol.RecordControl, q chan bool, conn *net.UDPConn) {
     spl := strings.Split(cmd, ":")
     if len(spl) == 3 {
         switch spl[0] {
-            case "CTL":
-                fmt.Println("Control command received.")
-                if spl[2] == "START" {
-                    execStartRecording(rc)
-                }
-            case "DAT":
-                fmt.Println("Data received.")
-            default:
-                fmt.Println("Invalid command received.")
+        case "CTL":
+            fmt.Println("Control command received.")
+            switch spl[2] {
+            case "START":
+                execStartRecording(rc)
+            case "STOP":
+                execStopRecording(rc)
+            case "PREPARE":
+                execPrepare(rc)
             }
-        } else {
-            if spl[0] == "EXIT" {
-                stopAndExit(q,conn)
-            } else {
-                fmt.Println("Invalid command received.")
-            }
+        case "DAT":
+            fmt.Println("Data received.")
+        default:
+            fmt.Println("Invalid command received.")
         }
+    } else {
+        if spl[0] == "EXIT" {
+            stopAndExit(q,conn)
+        } else {
+            fmt.Println("Invalid command received.")
+        }
+    }
+}
+
+// Check current status of the server. If idle the script is executed.
+func recCtrlIdle(rc *recordcontrol.RecordControl) bool {
+    if rc.GetState() == 0 {
+        return true
+    } else {
+        return false
+    }
 }
 
 // Execute preparation command (Perform all necessary checks of record control
-func execPrepare(rc recordcontrol.RecordControl) {
-
+func execPrepare(rc *recordcontrol.RecordControl) {
+    if recCtrlIdle(rc) {
+        fmt.Println("Running preflight...")
+    } else {
+        fmt.Println("Record control not ready for preparation.")
+    }
 }
 
 // Set configuration of record control
@@ -76,20 +92,28 @@ func setRecordControlConfig(rc *recordcontrol.RecordControl) {
 }
 
 // Start recording
-func execStartRecording(rc recordcontrol.RecordControl) {
-    rc.StartRecording()
-    fmt.Println(rc.GetState())
+func execStartRecording(rc *recordcontrol.RecordControl) {
+    if recCtrlIdle(rc) {
+        fmt.Println("Starting the recording")
+        rc.StartRecording()
+    } else {
+        fmt.Println("Record control not ready for recording.")
+    }
+    fmt.Println("Current state: ",rc.GetState())
 }
 
 // Stop recording
-func execStopRecording(rc recordcontrol.RecordControl) {
+func execStopRecording(rc *recordcontrol.RecordControl) {
+    rc.StopRecording()
 
 }
 
 // Stop UDP Server and exit
+//FIXME Needs to stop the recording as well
 func stopAndExit(q chan bool, conn *net.UDPConn) {
     fmt.Println("Closing shutdown channel.")
     close(q)
     fmt.Println("Closing UDP connection.")
     conn.Close()
+    //fmt.Println("Stopping the recording.")
 }
