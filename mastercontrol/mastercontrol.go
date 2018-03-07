@@ -7,6 +7,7 @@ import (
     "bitbucket.com/andrews2000/multicam/recordcontrol"
     "bitbucket.com/andrews2000/multicam/lns"
     "strings"
+    "net/http"
 )
 
 func main() {
@@ -31,6 +32,12 @@ func main() {
 
     // Start the routine that listens on UDP
     go serv1.Run(c,q, conn)
+
+
+    http.HandleFunc("/", lns.Handler)
+    http.HandleFunc("/request", lns.RequestHandler)
+    
+    go http.ListenAndServe(":8040", nil)
 
     for str := range c {
         parseCommand(str,&rec1,q,conn)

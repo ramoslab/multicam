@@ -5,6 +5,8 @@ package lns
 import (
     "net"
     "fmt"
+    "net/http"
+    "io/ioutil"
 )
 
 // Defines the configuration of the server and its functions
@@ -35,4 +37,33 @@ func (rudps RecUdpServer) Run(c chan string, q chan bool, conn *net.UDPConn) {
                 }
         }
     }
+}
+
+// Defines the configurtion of the http feedback server and its function
+type Page struct {
+    Title string
+    Body []byte
+}
+
+// Load a page file from disk
+func loadPage() (*Page, error) {
+    filename := "controlpage.html"
+    body, err := ioutil.ReadFile(filename)
+    if err != nil {
+        return nil, err
+    }
+    return &Page{Title: "Controlpage", Body: body}, nil
+}
+
+func Handler(w http.ResponseWriter, r *http.Request) {
+    p, err := loadPage()
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    fmt.Fprintf(w, "%s", p.Body)
+}
+
+func RequestHandler(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, "%s", "Antwort")
 }
