@@ -31,16 +31,16 @@ func main() {
 
     fmt.Println("Current state: ",rec1.GetState())
 
-    // Start the routine that listens on UDP
+    // Start the routine that listens over UDP
     go serv1.Run(c,q, conn)
 
+    // Configure and start the routine that listens over HTTP
+    serv2 := lns.RecHttpServer{Rec: &rec1}
 
-    //http.HandleFunc("/", lns.Handler)
-    //http.HandleFunc("/request", lns.RequestHandler)
     mux := http.NewServeMux()
 
-    mux.HandleFunc("/request", lns.RequestHandler)
-    mux.HandleFunc("/", lns.Handler)
+    mux.HandleFunc("/request", serv2.RequestHandler)
+    mux.HandleFunc("/", lns.PageHandler)
     mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
     co := cors.New(cors.Options{
@@ -53,6 +53,7 @@ func main() {
 
     go http.ListenAndServe(":8040", handler)
 
+    // Parse commands that are written to the command channel
     for str := range c {
         parseCommand(str,&rec1,q,conn)
     }

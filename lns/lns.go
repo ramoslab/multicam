@@ -7,6 +7,8 @@ import (
     "fmt"
     "net/http"
     "io/ioutil"
+    "bitbucket.com/andrews2000/multicam/recordcontrol"
+    "strconv"
 )
 
 // Defines the configuration of the server and its functions
@@ -55,8 +57,22 @@ func loadPage() (*Page, error) {
     return &Page{Title: "Controlpage", Body: body}, nil
 }
 
-func Handler(w http.ResponseWriter, r *http.Request) {
-    // allow cross domain AJAX requests
+// Defines the http server and its functions
+type RecHttpServer struct {
+    Rec *recordcontrol.RecordControl
+}
+
+// Handle Ajax requests to the /request page
+func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "application/json")
+    //w.Write([]byte("{\"hello\": \"world\"}"))
+    i := rhttps.Rec.GetState()
+    fmt.Println(i)
+    w.Write([]byte("{\"state\": \""+strconv.Itoa(i)+"\"}"))
+}
+
+// Handle the static main html page
+func PageHandler(w http.ResponseWriter, r *http.Request) {
     p, err := loadPage()
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -64,9 +80,3 @@ func Handler(w http.ResponseWriter, r *http.Request) {
     }
     fmt.Fprintf(w, "%s", p.Body)
 }
-
-func RequestHandler(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Content-Type", "application/json")
-    w.Write([]byte("{\"hello\": \"world\"}"))
-}
-

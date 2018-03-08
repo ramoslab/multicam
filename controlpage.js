@@ -5,7 +5,6 @@ function ControlPageViewModel() {
 }
 
 function get_answer() {
-    console.log("Script gestartet")
 
     var config = {
         url: "http://localhost:8040/request",
