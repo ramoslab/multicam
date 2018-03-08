@@ -1,5 +1,12 @@
 // Test AJAX call mit JQuery
 
+function ControlPageViewModel() {
+    get_answer = get_answer;
+    test = function() {
+        console.log("asdf");
+        }
+}
+
 function get_answer() {
     console.log("Script gestartet")
 
@@ -15,7 +22,6 @@ function get_answer() {
     }
 
     $.ajax(config).done(done_fct).fail(fail_fct);
-
 }
 
 function fail_fct(xhr, status, errorThrown) {
@@ -23,3 +29,5 @@ function fail_fct(xhr, status, errorThrown) {
     console.log("Status: " + status);
     console.log(xhr);
 }
+
+ko.applyBindings(new ControlPageViewModel());
