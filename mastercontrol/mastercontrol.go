@@ -8,6 +8,7 @@ import (
     "bitbucket.com/andrews2000/multicam/lns"
     "strings"
     "net/http"
+    "github.com/rs/cors"
 )
 
 func main() {
@@ -34,11 +35,23 @@ func main() {
     go serv1.Run(c,q, conn)
 
 
-    http.HandleFunc("/", lns.Handler)
-    http.HandleFunc("/request", lns.RequestHandler)
-    http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+    //http.HandleFunc("/", lns.Handler)
+    //http.HandleFunc("/request", lns.RequestHandler)
+    mux := http.NewServeMux()
 
-    go http.ListenAndServe(":8040", nil)
+    mux.HandleFunc("/request", lns.RequestHandler)
+    mux.HandleFunc("/", lns.Handler)
+    mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
+    co := cors.New(cors.Options{
+        AllowedOrigins: []string{"*"},
+        AllowCredentials: true,
+        AllowedMethods: []string{"GET","POST"},
+    })
+
+    handler := co.Handler(mux)
+
+    go http.ListenAndServe(":8040", handler)
 
     for str := range c {
         parseCommand(str,&rec1,q,conn)

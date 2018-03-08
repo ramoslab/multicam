@@ -56,6 +56,7 @@ func loadPage() (*Page, error) {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+    // allow cross domain AJAX requests
     p, err := loadPage()
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -65,6 +66,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RequestHandler(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprintf(w, "%s", "Antwort")
+    w.Header().Set("Content-Type", "application/json")
+    w.Write([]byte("{\"hello\": \"world\"}"))
 }
 

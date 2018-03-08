@@ -1,17 +1,14 @@
 // Test AJAX call mit JQuery
 
 function ControlPageViewModel() {
-    get_answer = get_answer;
-    test = function() {
-        console.log("asdf");
-        }
+    test = ko.observable("a");
 }
 
 function get_answer() {
     console.log("Script gestartet")
 
     var config = {
-        url: "localhost:8040/request",
+        url: "http://localhost:8040/request",
         data: {},
         type: "GET",
         dataType: "json"
@@ -30,4 +27,4 @@ function fail_fct(xhr, status, errorThrown) {
     console.log(xhr);
 }
 
-ko.applyBindings(new ControlPageViewModel());
+//ko.applyBindings(new ControlPageViewModel());
