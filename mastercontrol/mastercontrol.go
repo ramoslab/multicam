@@ -6,6 +6,7 @@ import (
     "net"
     "bitbucket.com/andrews2000/multicam/recordcontrol"
     "bitbucket.com/andrews2000/multicam/lns"
+    "bitbucket.com/andrews2000/multicam/taskqueue"
     "strings"
     "net/http"
     "github.com/rs/cors"
@@ -13,28 +14,26 @@ import (
 
 func main() {
     // Start up Server
-    // Instantiate configuration struct
+
+
+    // Instantiate record control data configuration
     cfg1 := recordcontrol.RecordConfig{Cameras: []int{1,2}, Sid: "AR", Date: "180305", Loc: "recordings"}
-    // Instantiate RecordControl struct 
+    // Instantiate record control data model 
     rec1 := recordcontrol.RecordControl{State: 0, Config: cfg1, VideoHwState: 0, AudioHwState: 0, DiskSpaceState: 0, SavingLocationState: 0, GstreamerState: 0}
-    // Instantiate RecUdpServer struct and start listening to UDP connection
+    // Instantiate task manager 
+    tq1 := taskqueue.TaskQueue{Queue: make(chan string), Stopping: make(chan bool)}
+    // Instantiate the UDP Server
     serv1 := lns.RecUdpServer{Addr: net.UDPAddr{Port: 9999, IP: net.ParseIP("127.0.0.1")}}
     conn, err := net.ListenUDP("udp",&serv1.Addr)
     if err != nil {
         panic(err)
     }
-    // Data channel
-    c := make(chan string)
-    //defer close(c)
+    // Communication from UDP to parser 
+    cudp := make(chan string)
     // Goroutine control channel
-    q := make(chan bool)
+    qudp := make(chan bool)
 
-    fmt.Println("Current state: ",rec1.GetState())
-
-    // Start the routine that listens over UDP
-    go serv1.Run(c,q, conn)
-
-    // Configure and start the routine that listens over HTTP
+    // Instantiate the HTTP Server
     serv2 := lns.RecHttpServer{Rec: &rec1}
 
     mux := http.NewServeMux()
@@ -51,18 +50,25 @@ func main() {
 
     handler := co.Handler(mux)
 
+    //DEBUG
+    fmt.Println("Current state: ",rec1.GetState())
+
+    // Start the routine that listens over UDP
+    go serv1.Run(cudp,qudp, conn)
+    // Start the routine that serves HTTP
     go http.ListenAndServe(":8040", handler)
 
     // Parse commands that are written to the command channel
-    for str := range c {
-        parseCommand(str,&rec1,q,conn)
+    for str := range cudp {
+        parseCommand(str,&rec1,qudp,conn, tq1)
     }
 
+    //DEBUG
     fmt.Println("Current state: ",rec1.GetState())
 }
 
 // Parse commands being received via UDP and initiate execution of the commands
-func parseCommand(cmd string, rc *recordcontrol.RecordControl, q chan bool, conn *net.UDPConn) {
+func parseCommand(cmd string, rc *recordcontrol.RecordControl, qudp chan bool, conn *net.UDPConn, tq taskqueue.TaskQueue) {
     spl := strings.Split(cmd, ":")
     if len(spl) == 3 {
         switch spl[0] {
@@ -70,11 +76,11 @@ func parseCommand(cmd string, rc *recordcontrol.RecordControl, q chan bool, conn
             fmt.Println("Control command received.")
             switch spl[2] {
             case "START":
-                execStartRecording(rc)
+                tq.Queue <- "Start"
             case "STOP":
-                execStopRecording(rc)
+                tq.Queue <- "Start"
             case "PREPARE":
-                execPrepare(rc)
+                tq.Queue <- "Prepare"
             }
         case "DAT":
             fmt.Println("Data received.")
@@ -83,58 +89,20 @@ func parseCommand(cmd string, rc *recordcontrol.RecordControl, q chan bool, conn
         }
     } else {
         if spl[0] == "EXIT" {
-            stopAndExit(q,conn)
+            stopAndExit(qudp,conn)
         } else {
             fmt.Println("Invalid command received.")
         }
     }
 }
 
-// Check current status of the server. If idle the script is executed.
-func recCtrlIdle(rc *recordcontrol.RecordControl) bool {
-    if rc.GetState() == 0 {
-        return true
-    } else {
-        return false
-    }
-}
-
-// Execute preparation command (Perform all necessary checks of record control
-func execPrepare(rc *recordcontrol.RecordControl) {
-    if recCtrlIdle(rc) {
-        fmt.Println("Running preflight...")
-    } else {
-        fmt.Println("Record control not ready for preparation.")
-    }
-}
-
-// Set configuration of record control
-func setRecordControlConfig(rc *recordcontrol.RecordControl) {
-
-}
-
-// Start recording
-func execStartRecording(rc *recordcontrol.RecordControl) {
-    if recCtrlIdle(rc) {
-        fmt.Println("Starting the recording")
-        rc.StartRecording()
-    } else {
-        fmt.Println("Record control not ready for recording.")
-    }
-    fmt.Println("Current state: ",rc.GetState())
-}
-
-// Stop recording
-func execStopRecording(rc *recordcontrol.RecordControl) {
-    rc.StopRecording()
-
-}
+//TODO It remains an open question of the stopAndExit procedure should remain here or go to the TaskQueue
 
 // Stop UDP Server and exit
 //FIXME Needs to stop the recording as well
-func stopAndExit(q chan bool, conn *net.UDPConn) {
+func stopAndExit(qudp chan bool, conn *net.UDPConn) {
     fmt.Println("Closing shutdown channel.")
-    close(q)
+    close(qudp)
     fmt.Println("Closing UDP connection.")
     conn.Close()
     //fmt.Println("Stopping the recording.")
