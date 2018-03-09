@@ -22,6 +22,9 @@ func main() {
     rec1 := recordcontrol.RecordControl{State: 0, Config: cfg1, VideoHwState: 0, AudioHwState: 0, DiskSpaceState: 0, SavingLocationState: 0, GstreamerState: 0}
     // Instantiate task manager 
     tq1 := taskqueue.TaskQueue{Queue: make(chan string), Stopping: make(chan bool)}
+    //FIXME Immediately writing something on the task queue. If you do not do that the first command goes missing.
+    //gtq1.Queue <- "Nada."
+
     // Instantiate the UDP Server
     serv1 := lns.RecUdpServer{Addr: net.UDPAddr{Port: 9999, IP: net.ParseIP("127.0.0.1")}}
     conn, err := net.ListenUDP("udp",&serv1.Addr)
@@ -57,10 +60,12 @@ func main() {
     go serv1.Run(cudp,qudp, conn)
     // Start the routine that serves HTTP
     go http.ListenAndServe(":8040", handler)
+    // Start the task management routine
+    go tq1.ExecuteTask(&rec1)
 
     // Parse commands that are written to the command channel
     for str := range cudp {
-        parseCommand(str,&rec1,qudp,conn, tq1)
+        parseCommand(str,&rec1,qudp,conn,tq1)
     }
 
     //DEBUG
@@ -73,14 +78,17 @@ func parseCommand(cmd string, rc *recordcontrol.RecordControl, qudp chan bool, c
     if len(spl) == 3 {
         switch spl[0] {
         case "CTL":
-            fmt.Println("Control command received.")
+            fmt.Println("Control command received: "+spl[2])
             switch spl[2] {
             case "START":
+                fmt.Println("Writing \"Start\" to queue")
                 tq.Queue <- "Start"
             case "STOP":
-                tq.Queue <- "Start"
+                tq.Queue <- "Stop"
             case "PREPARE":
                 tq.Queue <- "Prepare"
+            default:
+                fmt.Println("Ignoring invalid command: "+spl[2])
             }
         case "DAT":
             fmt.Println("Data received.")
@@ -100,6 +108,7 @@ func parseCommand(cmd string, rc *recordcontrol.RecordControl, qudp chan bool, c
 
 // Stop UDP Server and exit
 //FIXME Needs to stop the recording as well
+//FIXME Needs to stop the task manager as well
 func stopAndExit(qudp chan bool, conn *net.UDPConn) {
     fmt.Println("Closing shutdown channel.")
     close(qudp)

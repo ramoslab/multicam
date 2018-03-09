@@ -12,23 +12,16 @@ type TaskQueue struct {
 }
 
 // Execute tasks until stopping channel is true
-func (tq TaskQueue) executeTask(task string, rc *recordcontrol.RecordControl) {
+func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
     for {
-        select {
-        case <- tq.Stopping:
-            fmt.Println("Stopping Task manager.")
-            return
-        case <- tq.Queue:
-            for str := range tq.Queue {
-                switch str {
-                case "Pepare":
-                    execPrepare(rc)
-                case "Start":
-                    execStartRecording(rc)
-                case "Stop":
-                    execStopRecording(rc)
-                }
-            }
+        str := <-tq.Queue
+        switch str {
+        case "Pepare":
+            execPrepare(rc)
+        case "Start":
+            execStartRecording(rc)
+        case "Stop":
+            execStopRecording(rc)
         }
     }
 }
