@@ -37,7 +37,9 @@ func main() {
     qudp := make(chan bool)
 
     // Instantiate the HTTP Server
-    serv2 := lns.RecHttpServer{Rec: &rec1}
+    // Communication from task manager to HTTP server
+    cfb := make(chan int)
+    serv2 := lns.RecHttpServer{Tq: tq1, Cfb: cfb}
 
     mux := http.NewServeMux()
 
@@ -61,7 +63,7 @@ func main() {
     // Start the routine that serves HTTP
     go http.ListenAndServe(":8040", handler)
     // Start the task management routine
-    go tq1.ExecuteTask(&rec1)
+    go tq1.ExecuteTask(&rec1, cfb)
 
     // Parse commands that are written to the command channel
     for str := range cudp {

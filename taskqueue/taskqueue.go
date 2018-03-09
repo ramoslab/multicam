@@ -11,7 +11,7 @@ type TaskQueue struct {
 }
 
 // Execute tasks until stopping channel is true
-func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
+func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl, cfb chan int) {
     for {
         str := <-tq.Queue
         switch str {
@@ -21,20 +21,18 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
             execStartRecording(rc)
         case "Stop":
             execStopRecording(rc)
+        case "State":
+            i := getState(rc)
+            cfb <- i
         }
     }
 }
 
-// Actual tasks
-
-// Check current status of the server. If idle the script is executed.
-func recCtrlIdle(rc *recordcontrol.RecordControl) bool {
-    if rc.GetState() == 0 {
-        return true
-    } else {
-        return false
-    }
+// Actual task
+func getState(rc *recordcontrol.RecordControl) (int){
+    return rc.GetState()
 }
+
 
 // Execute preparation command (Perform all necessary checks of record control
 func execPrepare(rc *recordcontrol.RecordControl) {
@@ -56,13 +54,29 @@ func execStartRecording(rc *recordcontrol.RecordControl) {
         fmt.Println("Starting the recording")
         rc.StartRecording()
     } else {
-        fmt.Println("Record control not ready for recording.")
+        fmt.Println("Record control not idle.")
     }
     fmt.Println("Current state: ",rc.GetState())
 }
 
 // Stop recording
 func execStopRecording(rc *recordcontrol.RecordControl) {
-    rc.StopRecording()
+    if rc.GetState() == 2 {
+        fmt.Println("Stopping the recording.")
+        rc.StopRecording()
+    } else {
+        fmt.Println("Cannot stop recording because the server is currently not recording.")
+    }
+    fmt.Println("Current state: ",rc.GetState())
+}
 
+// Task Helpers
+
+// Check current status of the server. If idle the script is executed.
+func recCtrlIdle(rc *recordcontrol.RecordControl) bool {
+    if rc.GetState() == 0 {
+        return true
+    } else {
+        return false
+    }
 }

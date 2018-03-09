@@ -7,8 +7,8 @@ import (
     "fmt"
     "net/http"
     "io/ioutil"
-    "bitbucket.com/andrews2000/multicam/recordcontrol"
     "strconv"
+    "bitbucket.com/andrews2000/multicam/taskqueue"
 )
 
 // Defines the configuration of the server and its functions
@@ -59,15 +59,21 @@ func loadPage() (*Page, error) {
 
 // Defines the http server and its functions
 type RecHttpServer struct {
-    Rec *recordcontrol.RecordControl
+    // Task manager struct
+    Tq taskqueue.TaskQueue
+    // Feedback channel
+    Cfb chan int
 }
 
 // Handle Ajax requests to the /request page
 func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/json")
-    //w.Write([]byte("{\"hello\": \"world\"}"))
-    i := rhttps.Rec.GetState()
-    fmt.Println(i)
+    fmt.Println("Request received.")
+    // Start task appropriate to the request
+    rhttps.Tq.Queue <- "State"
+    // Wait for task execution
+    i := <-rhttps.Cfb
+    // Send reply as JSON
     w.Write([]byte("{\"state\": \""+strconv.Itoa(i)+"\"}"))
 }
 
