@@ -8,7 +8,6 @@ import (
 
 type TaskQueue struct {
     Queue chan string
-    Stopping chan bool
 }
 
 // Execute tasks until stopping channel is true

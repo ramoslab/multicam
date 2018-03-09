@@ -21,7 +21,7 @@ func main() {
     // Instantiate record control data model 
     rec1 := recordcontrol.RecordControl{State: 0, Config: cfg1, VideoHwState: 0, AudioHwState: 0, DiskSpaceState: 0, SavingLocationState: 0, GstreamerState: 0}
     // Instantiate task manager 
-    tq1 := taskqueue.TaskQueue{Queue: make(chan string), Stopping: make(chan bool)}
+    tq1 := taskqueue.TaskQueue{Queue: make(chan string)}
     //FIXME Immediately writing something on the task queue. If you do not do that the first command goes missing.
     //gtq1.Queue <- "Nada."
 
@@ -108,7 +108,7 @@ func parseCommand(cmd string, rc *recordcontrol.RecordControl, qudp chan bool, c
 
 // Stop UDP Server and exit
 //FIXME Needs to stop the recording as well
-//FIXME Needs to stop the task manager as well
+//FIXME Needs to stop the task manager as well (or does it?)
 func stopAndExit(qudp chan bool, conn *net.UDPConn) {
     fmt.Println("Closing shutdown channel.")
     close(qudp)
