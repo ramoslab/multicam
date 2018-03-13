@@ -1,7 +1,18 @@
 // Test AJAX call mit JQuery
 
 function ControlPageViewModel() {
-    test = ko.observable("a");
+    camlist = ko.observableArray();
+    statusitems = ko.observableArray();
+}
+
+function Camera(cam_name, cam_image) {
+    cam_name = ko.observable(cam_name);
+    cam_image = ko.observable(cam_image);
+}
+
+function Config(item_name,item_status) {
+    item_name = ko.observable(item_name);
+    item_status = ko.observable(item_status);
 }
 
 function get_answer() {

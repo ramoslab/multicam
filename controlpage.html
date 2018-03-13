@@ -12,17 +12,45 @@
 <body>
     <h1>Multicam Controller</h1>
     <div class="active_cams">
-        <p>Active cameras</p>
+        <h2>Active cameras</h2>
+        <div class="imagelist_container">
+            <dl class="image" data-bind="foreach: camlist">
+                <dt>IMAGE: <span data-bind="cam_image"></span></dt>
+                <dd>Cam <span data-bind="cam_name"></span></dd>
+            </dl>
+        </div>
     </div>
     <div class="config">
-        <p>Configuration</p>
+        <h2>Configuration</h2>
+        <ul class="config_list"> 
+            <li>
+                Record video from:
+                <dl data-bind="foreach: camlist">
+                    <dt>RADIOBUTTON</dt>
+                    <dd>Cam <span data-bind="cam_name"></span></dd>
+                </dl>
+            </li>
+            <li>
+                Record audio from:
+                <dl data-bind="foreach: camlist">
+                    <dt>RADIOBUTTON</dt>
+                    <dd>Cam <span data-bind="cam_name"></span></dd>
+                </dl>
+            </li>
+                
     </div>
     <div class="status">
-        <p>Status</p>
+        <h2>Status</h2>
+        <dl data-bind="foreach: statusitems">
+            <dt>CONFIG ITEM NAME</dt>
+            <dd>CONFIG ITEM STATUS </dt>
+        </dl>
     </div>
     <div class="control">
-        <p>Manual control</p>
-        <button type="button" onClick="get_answer()">Baaaah!</button>
+        <h2>Manual control</h2>
+        <button type="button" onClick="get_answer()">Get server status</button>
+        <button type="button" onClick="get_answer()">Start recording</button>
+        <button type="button" onClick="get_answer()">Stop recording</button>
     </div>
 </body>
 </html>
