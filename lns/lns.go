@@ -17,10 +17,7 @@ type RecUdpServer struct {
     Addr net.UDPAddr
 }
 
-func (rudps RecUdpServer) Run(c chan string, q chan bool, conn *net.UDPConn) {
-    //if err != nil {
-     //   panic(err)
-    //}
+func (rudps RecUdpServer) Run(com chan string, q chan bool, conn *net.UDPConn) {
 
     buf := make([]byte, 1024)
 
@@ -28,11 +25,11 @@ func (rudps RecUdpServer) Run(c chan string, q chan bool, conn *net.UDPConn) {
         select {
             case <- q:
                 fmt.Println("Stopping UDP listener.")
-                close(c)
+                close(com)
                 return
             default:
                 n, _, err := conn.ReadFromUDP(buf)
-                c <- string(buf[0:n])
+                com <- string(buf[0:n])
                 fmt.Println("Received ", string(buf[0:n]))
 
                 if err != nil {
@@ -64,11 +61,13 @@ type RecHttpServer struct {
     Tq taskqueue.TaskQueue
     // Feedback channel
     Cfb chan int
+    // Command channel
+    Com chan string
 }
 
 type clientRequest struct {
-    Request string
-    Value int
+    Command string
+    Value string 
 }
 
 // Handle Ajax requests to the /request page
@@ -86,7 +85,10 @@ func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Reque
         fmt.Println(err)
     }
 
-    fmt.Printf("Decoded: %s:%d\n",creq.Request,creq.Value)
+    // Send command to command channel
+    //FIXME add source of the command to the command
+    //TODO add client time of the request
+    rhttps.Com <- fmt.Sprintf("%s:%i:%s",creq.Command,0,creq.Value)
 
     // Start task appropriate to the request
     rhttps.Tq.Queue <- "State"

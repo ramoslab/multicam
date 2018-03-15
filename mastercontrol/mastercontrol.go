@@ -32,14 +32,14 @@ func main() {
         panic(err)
     }
     // Communication from UDP to parser 
-    cudp := make(chan string)
+    com := make(chan string)
     // Goroutine control channel
     qudp := make(chan bool)
 
     // Instantiate the HTTP Server
     // Communication from task manager to HTTP server
     cfb := make(chan int)
-    serv2 := lns.RecHttpServer{Tq: tq1, Cfb: cfb}
+    serv2 := lns.RecHttpServer{Tq: tq1, Cfb: cfb, Com: com}
 
     mux := http.NewServeMux()
 
@@ -59,14 +59,14 @@ func main() {
     fmt.Println("Current state: ",rec1.GetState())
 
     // Start the routine that listens over UDP
-    go serv1.Run(cudp,qudp, conn)
+    go serv1.Run(com,qudp, conn)
     // Start the routine that serves HTTP
     go http.ListenAndServe(":8040", handler)
     // Start the task management routine
     go tq1.ExecuteTask(&rec1, cfb)
 
     // Parse commands that are written to the command channel
-    for str := range cudp {
+    for str := range com {
         parseCommand(str,&rec1,qudp,conn,tq1)
     }
 
@@ -75,6 +75,7 @@ func main() {
 }
 
 // Parse commands being received via UDP and initiate execution of the commands
+//FIXME How do we know the source of the command: Maybe by instead of using strings to store the commands using some sort of a struct
 func parseCommand(cmd string, rc *recordcontrol.RecordControl, qudp chan bool, conn *net.UDPConn, tq taskqueue.TaskQueue) {
     spl := strings.Split(cmd, ":")
     if len(spl) == 3 {
@@ -94,6 +95,8 @@ func parseCommand(cmd string, rc *recordcontrol.RecordControl, qudp chan bool, c
             }
         case "DAT":
             fmt.Println("Data received.")
+        case "REQ":
+            fmt.Println("Request received.")
         default:
             fmt.Println("Invalid command received.")
         }

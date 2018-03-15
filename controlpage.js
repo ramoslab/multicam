@@ -35,7 +35,7 @@ function get_answer() {
 
     var config = {
         url: "http://localhost:8040/request",
-        data: JSON.stringify({"request": "state", "value": 100}),
+        data: JSON.stringify({"Command": "REQ", "value": "STATE"}),
         type: "POST",
         contentType: "application/json", // Request
         dataType: "json" // Response
