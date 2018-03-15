@@ -6,6 +6,7 @@ import (
     "net"
     "fmt"
     "net/http"
+    "encoding/json"
     "io/ioutil"
     "strconv"
     "bitbucket.com/andrews2000/multicam/taskqueue"
@@ -65,15 +66,35 @@ type RecHttpServer struct {
     Cfb chan int
 }
 
+type clientRequest struct {
+    Request string
+    Value int
+}
+
 // Handle Ajax requests to the /request page
 func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Content-Type", "application/json")
+    //Debug
     fmt.Println("Request received.")
+
+    // Decode request from client
+    decoder := json.NewDecoder(r.Body)
+
+    var creq clientRequest
+    err := decoder.Decode(&creq)
+
+    if err != nil {
+        fmt.Println(err)
+    }
+
+    fmt.Printf("Decoded: %s:%d\n",creq.Request,creq.Value)
+
     // Start task appropriate to the request
     rhttps.Tq.Queue <- "State"
+
     // Wait for task execution
     i := <-rhttps.Cfb
     // Send reply as JSON
+    w.Header().Set("Content-Type", "application/json")
     w.Write([]byte("{\"state\": \""+strconv.Itoa(i)+"\"}"))
 }
 
