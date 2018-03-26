@@ -3,27 +3,30 @@ package taskqueue
 
 import (
     "bitbucket.com/andrews2000/multicam/recordcontrol"
+    //"bitbucket.com/andrews2000/multicam/lns"
     "fmt"
 )
 
 type TaskQueue struct {
-    Queue chan string
+    Queue chan Command
 }
 
 // Execute tasks until stopping channel is true
-func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl, cfb chan int) {
+func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
     for {
-        str := <-tq.Queue
-        switch str {
-        case "Pepare":
+        cmd := <-tq.Queue
+        test := cmd.GetPayload()
+        switch test {
+        case "PREPARE":
             execPrepare(rc)
-        case "Start":
+        case "START":
             execStartRecording(rc)
-        case "Stop":
+        case "STOP":
             execStopRecording(rc)
-        case "State":
-            i := getState(rc)
-            cfb <- i
+        case "STATE":
+            execStopRecording(rc)
+        default:
+            fmt.Println("a")
         }
     }
 }
@@ -79,4 +82,11 @@ func recCtrlIdle(rc *recordcontrol.RecordControl) bool {
     } else {
         return false
     }
+}
+
+// The interface for command structures
+type Command interface {
+    // This function returns a string to the client through the appropriate channel
+    Respond(Str string)
+    GetPayload() string
 }
