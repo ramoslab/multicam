@@ -3,8 +3,8 @@ package taskqueue
 
 import (
     "bitbucket.com/andrews2000/multicam/recordcontrol"
-    //"bitbucket.com/andrews2000/multicam/lns"
     "fmt"
+    "strconv"
 )
 
 type TaskQueue struct {
@@ -15,22 +15,45 @@ type TaskQueue struct {
 func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
     for {
         cmd := <-tq.Queue
-        test := cmd.GetPayload()
-        switch test {
-        case "PREPARE":
-            execPrepare(rc)
-        case "START":
-            execStartRecording(rc)
-        case "STOP":
-            execStopRecording(rc)
-        case "STATE":
-            execStopRecording(rc)
+        cmdType := cmd.GetType()
+        cmdPayload := cmd.GetPayload()
+
+        fmt.Println("TQ: "+cmdType, cmdPayload)
+
+        switch cmdType {
+        case "CTL":
+            switch cmdPayload {
+            case "PREPARE":
+                execPrepare(rc)
+                cmd.Respond("OK:PREPARE")
+            case "START":
+                execStartRecording(rc)
+                cmd.Respond("OK:START")
+            case "STOP":
+                execStopRecording(rc)
+                cmd.Respond("OK:STOP")
+            default:
+                fmt.Println("TQ: REQ[unknown] "+cmdPayload)
+                cmd.Respond("NOTOK:ERROR")
+        }
+        case "REQ":
+            switch cmdPayload {
+            case "STATE":
+                cmd.Respond(strconv.Itoa(rc.GetState()))
+            default:
+                fmt.Println("TQ: REQ[unknown] "+cmdPayload)
+                cmd.Respond("NOTOK:ERROR")
+            }
+        //case "DATA":
+        case "ERROR":
+            fmt.Println("TQ: ERROR received. "+cmdPayload)
+            cmd.Respond("NOTOK:ERROR")
         default:
-            fmt.Println("a")
+            fmt.Println("TQ: TYPE[unknown] "+cmdType)
+            cmd.Respond("NOTOK:ERROR")
         }
     }
 }
-
 // Actual task
 func getState(rc *recordcontrol.RecordControl) (int){
     return rc.GetState()
@@ -88,5 +111,6 @@ func recCtrlIdle(rc *recordcontrol.RecordControl) bool {
 type Command interface {
     // This function returns a string to the client through the appropriate channel
     Respond(Str string)
+    GetType() string
     GetPayload() string
 }

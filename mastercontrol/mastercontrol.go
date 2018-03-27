@@ -25,7 +25,7 @@ func main() {
     //gtq1.Queue <- "Nada."
 
     // Instantiate the UDP Server
-    serveUdp_addr := net.UDPAddr{Port: 9999, IP: net.ParseIP("127.0.0.1")}
+    serveUdp_addr := net.UDPAddr{Port: 9998, IP: net.ParseIP("127.0.0.1")}
     serveUdp_conn, err := net.ListenUDP("udp",&serveUdp_addr)
 
     if err != nil {
@@ -33,15 +33,18 @@ func main() {
         //FIXME Proper error handling
     }
 
-    serveUdp := lns.RecUdpServer{Conn: serveUdp_conn, Addr: &serveUdp_addr, Tq: tq1}
+    udpFeedback := make(chan string)
 
-    // Communication from UDP to parser 
-    //com := make(chan string)
+    serveUdp := lns.RecUdpServer{Conn: serveUdp_conn, Addr: &serveUdp_addr, Tq: tq1, UdpFeedback: udpFeedback}
+
     // Goroutine control channel (for ending goroutine)
     qudp := make(chan bool)
 
     // Instantiate the HTTP Server
-    serveHttp := lns.RecHttpServer{Tq: tq1}
+
+    httpFeedback := make(chan string)
+
+    serveHttp := lns.RecHttpServer{Tq: tq1, HttpFeedback: httpFeedback}
 
     mux := http.NewServeMux()
 

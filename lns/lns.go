@@ -22,6 +22,8 @@ type RecUdpServer struct {
     Addr *net.UDPAddr
     // Task manager
     Tq taskqueue.TaskQueue
+    // Feedback channel from task queue
+    UdpFeedback chan string
 }
 
 func (rudps RecUdpServer) Run(q chan bool) {
@@ -32,26 +34,37 @@ func (rudps RecUdpServer) Run(q chan bool) {
         select {
             case <- q:
                 fmt.Println("Stopping UDP listener.")
-                //close(com)
-                return
             default:
-                n, _, err := rudps.Conn.ReadFromUDP(buf)
-                // Parse command and put it on the task queue
-                com := parseUdpCommand(string(buf[0:n]), rudps.Conn, rudps.Addr)
-                rudps.Tq.Queue <- com
-
-                fmt.Println("Received ", string(buf[0:n]))
+                // Get number of bytes on the buffer and client address
+                n, addr, err := rudps.Conn.ReadFromUDP(buf)
 
                 if err != nil {
                     fmt.Println("Error: ", err)
+                }
+                // Parse command and put it on the task queue
+                com := parseUdpCommand(string(buf[0:n]), rudps.UdpFeedback)
+                rudps.Tq.Queue <- com
+
+                //DEBUG
+                fmt.Println("Received ", string(buf[0:n]))
+
+                // Send response to client
+                //NOTE The response should usually go unheard because if the package gets lost the client will likely block while waiting for the package to arrive
+                response := <-rudps.UdpFeedback
+                //DEBUG
+                fmt.Println("Response:",response)
+
+                _,err = rudps.Conn.WriteToUDP([]byte(response), addr)
+
+                if err != nil {
+                    fmt.Println(err)
                 }
         }
     }
 }
 
 // Parse commands being received via UDP and initiate execution of the commands
-//FIXME How do we know the source of the command: Maybe by instead of using strings to store the commands using some sort of a struct
-func parseUdpCommand(cmd string, conn *net.UDPConn, addr *net.UDPAddr) UdpCommand {
+func parseUdpCommand(cmd string, udpFeedback chan string) UdpCommand {
     var retVal UdpCommand
     spl := strings.Split(cmd, ":")
     if len(spl) == 3 {
@@ -61,39 +74,70 @@ func parseUdpCommand(cmd string, conn *net.UDPConn, addr *net.UDPAddr) UdpComman
             switch spl[2] {
             case "START":
                 fmt.Println("Writing \"Start\" to queue")
-                retVal = UdpCommand{Type: "CTL", Payload: "START", Timestamp: "000", conn: conn, addr: addr}
+                retVal = UdpCommand{Type: "CTL", Payload: "START", Timestamp: "000", UdpFeedback: udpFeedback}
             case "STOP":
-                retVal = UdpCommand{Type: "CTL", Payload: "STOP", Timestamp: "000", conn: conn, addr: addr}
+                retVal = UdpCommand{Type: "CTL", Payload: "STOP", Timestamp: "000", UdpFeedback: udpFeedback}
             case "PREPARE":
-                retVal = UdpCommand{Type: "CTL", Payload: "PREPARE", Timestamp: "000", conn: conn, addr: addr}
+                retVal = UdpCommand{Type: "CTL", Payload: "PREPARE", Timestamp: "000", UdpFeedback: udpFeedback}
             default:
-                retVal = UdpCommand{Type: "ERROR", Payload: "ERROR", Timestamp: "000", conn: conn, addr: addr}
+                retVal = UdpCommand{Type: "ERROR", Payload: "ERROR", Timestamp: "000", UdpFeedback: udpFeedback}
                 fmt.Println("Ignoring invalid command: "+spl[2])
             }
         case "DAT":
             fmt.Println("Data received.")
-            retVal = UdpCommand{Type: "DATA", Payload: "xxx", Timestamp: "000", conn: conn, addr: addr}
+            retVal = UdpCommand{Type: "DATA", Payload: "xxx", Timestamp: "000", UdpFeedback: udpFeedback}
         case "REQ":
             fmt.Println("Request received.")
-            retVal = UdpCommand{Type: "REQ", Payload: "REQ", Timestamp: "000", conn: conn, addr: addr}
+            retVal = UdpCommand{Type: "REQ", Payload: "REQ", Timestamp: "000", UdpFeedback: udpFeedback}
             // Ausformulieren
         default:
             //FIXME Proper error handling needed
             fmt.Println("Invalid command received.")
-            retVal = UdpCommand{Type: "ERROR", Payload: "ERROR", Timestamp: "000", conn: conn, addr: addr}
+            retVal = UdpCommand{Type: "ERROR", Payload: "ERROR", Timestamp: "000", UdpFeedback: udpFeedback}
         }
     } else {
         if spl[0] == "EXIT" {
             //stopAndExit(qudp,conn)
             //TODO Exit as a command
-            retVal = UdpCommand{Type: "EXIT", Payload: "EXIT", Timestamp: "000", conn: conn, addr: addr}
+            retVal = UdpCommand{Type: "EXIT", Payload: "EXIT", Timestamp: "000", UdpFeedback: udpFeedback}
         } else {
             //FIXME Proper error handling needed
-            retVal = UdpCommand{Type: "ERROR", Payload: "ERROR", Timestamp: "000", conn: conn, addr: addr}
+            retVal = UdpCommand{Type: "ERROR", Payload: "ERROR", Timestamp: "000", UdpFeedback: udpFeedback}
         }
     }
     return retVal
 }
+
+// A command generated by the udp server
+type UdpCommand struct {
+    // The type of the command
+    Type string
+    // The "content" of the command
+    Payload string
+    // The timestamp
+    //TODO Use timestamp object
+    Timestamp string
+    // Feedback channel for the response of the client
+    UdpFeedback chan string
+}
+
+// The implementation of "Respond" of the Command interface for UDP
+func (cmd UdpCommand) Respond(res string) {
+    fmt.Println("UDPRespond: ",res)
+    cmd.UdpFeedback <- res
+}
+
+// The implementation of "GetPayload" of the Command interface for UDP
+func (cmd UdpCommand) GetPayload() string {
+    return cmd.Payload
+}
+
+// The implementation of "GetType" of the Command interface forUDP
+func (cmd UdpCommand) GetType() string {
+    return cmd.Type
+}
+
+
 
 ////HTTP SERVER
 
@@ -113,15 +157,28 @@ func loadPage() (*Page, error) {
     return &Page{Title: "Controlpage", Body: body}, nil
 }
 
+// Handle the static main html page
+func PageHandler(w http.ResponseWriter, r *http.Request) {
+    p, err := loadPage()
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    fmt.Fprintf(w, "%s", p.Body)
+}
+
 // Defines the http server and its functions
 type RecHttpServer struct {
     // Task manager struct
     Tq taskqueue.TaskQueue
+    // Feedback channel from task queue
+    HttpFeedback chan string
 }
 
 type clientRequest struct {
-    command string
-    value string
+    //Remember: JSON decoder only fills exported fields of struct (upper-case first letter)
+    Command string
+    Value string
 }
 
 // Handle Ajax requests to the /request page
@@ -140,36 +197,32 @@ func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Reque
     }
 
     // Parse command and put it on the task queue
-    currCmd := parseHttpCommand(creq, w)
+    currCmd := parseHttpCommand(creq, &w, rhttps.HttpFeedback)
     rhttps.Tq.Queue <- currCmd
+    // This is used to send the http response back to the client before the client requestHandler returns
+    var feedback string
+    feedback = <-rhttps.HttpFeedback
+    //TODO Timeout for HTTP respones if nothing is on the channel after a while (e.g. if parsing the command fails or so
+    w.Header().Set("Content-Type", "application/json")
+    w.Write([]byte("{\"state\": \""+feedback+"\"}"))
+
 }
 
 // Parse commands received via HTTP
-func parseHttpCommand(creq clientRequest, hRespWriter http.ResponseWriter) HttpCommand {
+func parseHttpCommand(creq clientRequest, hRespWriter *http.ResponseWriter, httpFeedback chan string) HttpCommand {
     var retVal HttpCommand
-    switch creq.command {
-    case "req":
-        switch creq.value {
-        case "state":
-            retVal = HttpCommand{Type: "REQ", Payload: "STATE", Timestamp: "000", HRespWriter: hRespWriter}
+    switch creq.Command {
+    case "REQ":
+        switch creq.Value {
+        case "STATE":
+            retVal = HttpCommand{Type: "REQ", Payload: "STATE", Timestamp: "000", HttpFeedback: httpFeedback}
         default:
             //FIXME Proper error handling (using error type)
-            retVal =  HttpCommand{Type: "ERROR", Payload: "ERROR", Timestamp: "000", HRespWriter: hRespWriter}
+            retVal = HttpCommand{Type: "ERROR", Payload: "ERROR", Timestamp: "000", HttpFeedback: httpFeedback}
         }
     }
     return retVal
 }
-
-// Handle the static main html page
-func PageHandler(w http.ResponseWriter, r *http.Request) {
-    p, err := loadPage()
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    fmt.Fprintf(w, "%s", p.Body)
-}
-
 
 // A command generated by the http server
 type HttpCommand struct {
@@ -180,17 +233,16 @@ type HttpCommand struct {
     // The timestamp
     //TODO Use timestamp object
     Timestamp string
-    // Variable that specifies the response: httpResponseWriter
-    HRespWriter http.ResponseWriter
+    // Feedback channel for the response to the client
+    HttpFeedback chan string
 }
 
 // The implementation of "Respond" of the Command interface for HTTP
 func (cmd HttpCommand) Respond(res string) {
-    // Send reply as JSON
-    cmd.HRespWriter.Header().Set("Content-Type", "application/json")
-    //cmd.HRepsWriter.Write([]byte("{\"state\": \""+strconv.Itoa(i)+"\"}"))
-    cmd.HRespWriter.Write([]byte("{\"state\": \""+res+"\"}"))
-    //TODO Proper JSON encoding
+    // Write response string to the channel
+    cmd.HttpFeedback <- res
+    //TODO Make response structs
+    fmt.Println(res)
 }
 
 // The implementation of "GetPayload" of the Command interface for HTTP
@@ -198,29 +250,8 @@ func (cmd HttpCommand) GetPayload() string {
     return cmd.Payload
 }
 
-// A command generated by the udp server
-type UdpCommand struct {
-    // The type of the command
-    Type string
-    // The "content" of the command
-    Payload string
-    // The timestamp
-    //TODO Use timestamp object
-    Timestamp string
-    // Variables that specifies the response: UDP connection and address
-    conn *net.UDPConn
-    addr *net.UDPAddr
+// The implementation of "GetType" of the Command interface for HTTP
+func (cmd HttpCommand) GetType() string {
+    return cmd.Type
 }
 
-// The implementation of "Respond" of the Command interface for UDP
-func (cmd UdpCommand) Respond(res string) {
-    _,err := cmd.conn.WriteToUDP([]byte("message"), cmd.addr)
-    if err != nil {
-        fmt.Printf("Error with UDP: %v",err)
-    }
-}
-
-// The implementation of "GetPayload" of the Command interface for UDP
-func (cmd UdpCommand) GetPayload() string {
-    return cmd.Payload
-}
