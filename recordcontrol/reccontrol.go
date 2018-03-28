@@ -92,8 +92,6 @@ type RecordConfig struct {
     Cameras []int
     // ID of the subject
     Sid string
-    // Starting date of the server
-    Date string
     // Saving location
-    Loc string
+    RecFolder string
 }

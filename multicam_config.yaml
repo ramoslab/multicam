@@ -1,0 +1,10 @@
+Server:
+    Address: 127.0.0.1
+    Port: 9998
+Recording:
+    Cameras:
+        - 1
+        - 2
+        - 3
+    SID: None
+    RecFolder: recordings

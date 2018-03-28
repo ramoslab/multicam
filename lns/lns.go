@@ -202,7 +202,7 @@ func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Reque
     // This is used to send the http response back to the client before the client requestHandler returns
     var feedback string
     feedback = <-rhttps.HttpFeedback
-    //TODO Timeout for HTTP respones if nothing is on the channel after a while (e.g. if parsing the command fails or so
+    //TODO Timeout for HTTP respones if nothing is on the channel after a while (e.g. if parsing the command fails or so)
     w.Header().Set("Content-Type", "application/json")
     w.Write([]byte("{\"state\": \""+feedback+"\"}"))
 

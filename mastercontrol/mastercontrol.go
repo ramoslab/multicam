@@ -9,23 +9,49 @@ import (
     "bitbucket.com/andrews2000/multicam/taskqueue"
     "net/http"
     "github.com/rs/cors"
+    "github.com/spf13/viper"
 )
 
 func main() {
     // Start up Server
 
+    // Read configuration
+    viper.SetConfigName("multicam_config")
+    viper.AddConfigPath(".")
+
+    //DEBUG
+    err := viper.ReadInConfig()
+    if err != nil {
+        panic(fmt.Errorf("Problem reading config:",err))
+    }
+
+    // Get configuration for the recording
+    sid := viper.GetString("Recording.SID")
+    recfolder := viper.GetString("Recording.RecFolder")
+    cams_cfg := viper.Get("Recording.Cameras").([]interface{})
+    cams := make([]int, len(cams_cfg))
+    for i,cam := range cams_cfg {
+        cams[i] = cam.(int)
+    }
+
+    // Get configuration for the server
+    port := viper.GetInt("Server.Port")
+    address := viper.GetString("Server.Adress")
+
 
     // Instantiate record control data configuration
-    cfg1 := recordcontrol.RecordConfig{Cameras: []int{1,2}, Sid: "AR", Date: "180305", Loc: "recordings"}
+    recCfg := recordcontrol.RecordConfig{Cameras: cams, Sid: sid, RecFolder: recfolder}
+    //DEBUG
+    fmt.Println(recCfg)
     // Instantiate record control data model 
-    rec1 := recordcontrol.RecordControl{State: 0, Config: cfg1, VideoHwState: 0, AudioHwState: 0, DiskSpaceState: 0, SavingLocationState: 0, GstreamerState: 0}
+    rec1 := recordcontrol.RecordControl{State: 0, Config: recCfg, VideoHwState: 0, AudioHwState: 0, DiskSpaceState: 0, SavingLocationState: 0, GstreamerState: 0}
     // Instantiate task manager 
     tq1 := taskqueue.TaskQueue{Queue: make(chan taskqueue.Command)}
     //FIXME Immediately writing something on the task queue. If you do not do that the first command goes missing.
     //gtq1.Queue <- "Nada."
 
     // Instantiate the UDP Server
-    serveUdp_addr := net.UDPAddr{Port: 9998, IP: net.ParseIP("127.0.0.1")}
+    serveUdp_addr := net.UDPAddr{Port: port, IP: net.ParseIP(address)}
     serveUdp_conn, err := net.ListenUDP("udp",&serveUdp_addr)
 
     if err != nil {
