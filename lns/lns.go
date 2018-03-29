@@ -23,7 +23,7 @@ type RecUdpServer struct {
     // Task manager
     Tq taskqueue.TaskQueue
     // Feedback channel from task queue
-    UdpFeedback chan string
+    UdpFeedback chan []byte
 }
 
 func (rudps RecUdpServer) Run(q chan bool) {
@@ -36,7 +36,8 @@ func (rudps RecUdpServer) Run(q chan bool) {
                 fmt.Println("Stopping UDP listener.")
             default:
                 // Get number of bytes on the buffer and client address
-                n, addr, err := rudps.Conn.ReadFromUDP(buf)
+                //n, addr, err := rudps.Conn.ReadFromUDP(buf)
+                n, _, err := rudps.Conn.ReadFromUDP(buf)
 
                 if err != nil {
                     fmt.Println("Error: ", err)
@@ -54,7 +55,7 @@ func (rudps RecUdpServer) Run(q chan bool) {
                 //DEBUG
                 fmt.Println("Response:",response)
 
-                _,err = rudps.Conn.WriteToUDP([]byte(response), addr)
+                //_,err = rudps.Conn.WriteToUDP([]byte(response), addr)
 
                 if err != nil {
                     fmt.Println(err)
@@ -64,7 +65,7 @@ func (rudps RecUdpServer) Run(q chan bool) {
 }
 
 // Parse commands being received via UDP and initiate execution of the commands
-func parseUdpCommand(cmd string, udpFeedback chan string) UdpCommand {
+func parseUdpCommand(cmd string, udpFeedback chan []byte) UdpCommand {
     var retVal UdpCommand
     spl := strings.Split(cmd, ":")
     if len(spl) == 3 {
@@ -118,13 +119,35 @@ type UdpCommand struct {
     //TODO Use timestamp object
     Timestamp string
     // Feedback channel for the response of the client
-    UdpFeedback chan string
+    UdpFeedback chan []byte
 }
 
-// The implementation of "Respond" of the Command interface for UDP
-func (cmd UdpCommand) Respond(res string) {
-    fmt.Println("UDPRespond: ",res)
+// The implementation of "RespondMessage" of the Command interface for HTTP
+func (cmd UdpCommand) RespondMessage(msg taskqueue.Message) {
+    // Marshal message into byte array
+    res, _ := json.Marshal(msg)
+    // Write response string to the channel
     cmd.UdpFeedback <- res
+    //TODO Make response structs
+    fmt.Println(res)
+}
+
+func (cmd UdpCommand) RespondState(state taskqueue.State) {
+    // Marshal message into byte array
+    res, _ := json.Marshal(state)
+    // Write response string to the channel
+    cmd.UdpFeedback <- res
+    //TODO Make response structs
+    fmt.Println(res)
+}
+
+func (cmd UdpCommand) RespondError(msgerr taskqueue.Error) {
+    // Marshal message into byte array
+    res, _ := json.Marshal(msgerr)
+    // Write response string to the channel
+    cmd.UdpFeedback <- res
+    //TODO Make response structs
+    fmt.Println(res)
 }
 
 // The implementation of "GetPayload" of the Command interface for UDP
@@ -172,7 +195,7 @@ type RecHttpServer struct {
     // Task manager struct
     Tq taskqueue.TaskQueue
     // Feedback channel from task queue
-    HttpFeedback chan string
+    HttpFeedback chan []byte
 }
 
 type clientRequest struct {
@@ -200,16 +223,16 @@ func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Reque
     currCmd := parseHttpCommand(creq, &w, rhttps.HttpFeedback)
     rhttps.Tq.Queue <- currCmd
     // This is used to send the http response back to the client before the client requestHandler returns
-    var feedback string
+    var feedback []byte
     feedback = <-rhttps.HttpFeedback
     //TODO Timeout for HTTP respones if nothing is on the channel after a while (e.g. if parsing the command fails or so)
     w.Header().Set("Content-Type", "application/json")
-    w.Write([]byte("{\"state\": \""+feedback+"\"}"))
+    w.Write(feedback)
 
 }
 
 // Parse commands received via HTTP
-func parseHttpCommand(creq clientRequest, hRespWriter *http.ResponseWriter, httpFeedback chan string) HttpCommand {
+func parseHttpCommand(creq clientRequest, hRespWriter *http.ResponseWriter, httpFeedback chan []byte) HttpCommand {
     var retVal HttpCommand
     switch creq.Command {
     case "REQ":
@@ -234,11 +257,31 @@ type HttpCommand struct {
     //TODO Use timestamp object
     Timestamp string
     // Feedback channel for the response to the client
-    HttpFeedback chan string
+    HttpFeedback chan []byte
 }
 
-// The implementation of "Respond" of the Command interface for HTTP
-func (cmd HttpCommand) Respond(res string) {
+// The implementation of "RespondMessage" of the Command interface for HTTP
+func (cmd HttpCommand) RespondMessage(msg taskqueue.Message) {
+    // Marshal message into byte array
+    res, _ := json.Marshal(msg)
+    // Write response string to the channel
+    cmd.HttpFeedback <- res
+    //TODO Make response structs
+    fmt.Println(res)
+}
+
+func (cmd HttpCommand) RespondState(state taskqueue.State) {
+    // Marshal message into byte array
+    res, _ := json.Marshal(state)
+    // Write response string to the channel
+    cmd.HttpFeedback <- res
+    //TODO Make response structs
+    fmt.Println(res)
+}
+
+func (cmd HttpCommand) RespondError(msgerr taskqueue.Error) {
+    // Marshal message into byte array
+    res, _ := json.Marshal(msgerr)
     // Write response string to the channel
     cmd.HttpFeedback <- res
     //TODO Make response structs

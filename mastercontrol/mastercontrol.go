@@ -44,7 +44,9 @@ func main() {
     //DEBUG
     fmt.Println(recCfg)
     // Instantiate record control data model 
-    rec1 := recordcontrol.RecordControl{State: 0, Config: recCfg, VideoHwState: 0, AudioHwState: 0, DiskSpaceState: 0, SavingLocationState: 0, GstreamerState: 0}
+    rec1 := recordcontrol.RecordControl{StateId: 0, Config: recCfg}
+    rec1.Preflight()
+    fmt.Println(rec1)
     // Instantiate task manager 
     tq1 := taskqueue.TaskQueue{Queue: make(chan taskqueue.Command)}
     //FIXME Immediately writing something on the task queue. If you do not do that the first command goes missing.
@@ -59,7 +61,7 @@ func main() {
         //FIXME Proper error handling
     }
 
-    udpFeedback := make(chan string)
+    udpFeedback := make(chan []byte)
 
     serveUdp := lns.RecUdpServer{Conn: serveUdp_conn, Addr: &serveUdp_addr, Tq: tq1, UdpFeedback: udpFeedback}
 
@@ -68,7 +70,7 @@ func main() {
 
     // Instantiate the HTTP Server
 
-    httpFeedback := make(chan string)
+    httpFeedback := make(chan []byte)
 
     serveHttp := lns.RecHttpServer{Tq: tq1, HttpFeedback: httpFeedback}
 

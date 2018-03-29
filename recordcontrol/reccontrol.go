@@ -4,6 +4,8 @@ package recordcontrol
 
 // The record control class
 type RecordControl struct {
+    // The current configuration structure
+    Config RecordConfig
     // The state of record control: 
     //0 is idle;
     //1 is ready for recording;
@@ -13,58 +15,53 @@ type RecordControl struct {
     //5 is checking disk space;
     //6 is checking if the saving location exists;
     //7 is checking if other gstreamer processes are running 
-    State int
-    // The current configuration structure
-    Config RecordConfig
-    // The current state of the different aspects RecordControl is controlling
-    // 0: Not yet tested; 1: false; 2: true
-    VideoHwState int
-    AudioHwState int
-    DiskSpaceState int
-    SavingLocationState int
-    GstreamerState int
+    StateId int
+    // The actual state
+    State State
 }
 
 // Update the state value 
 func (rc *RecordControl) setState(newstate int) {
-    rc.State = newstate
+    rc.StateId = newstate
 }
 
 // Return the state value
 func (rc *RecordControl) GetState() int {
-    return rc.State
+    return rc.StateId
 }
 
 // Checking (preflight)
 
-// Check video hardware
-func (rc *RecordControl) CheckVideoHw() {
+// Get cameras available
+func (rc *RecordControl) CheckVideoHw() []Hardware {
     rc.setState(3)
-    rc.VideoHwState = 2
+    return []Hardware{Hardware{Id: 0, Hardware: "/dev/video0"}, Hardware{Id: 0, Hardware: "/dev/mic1"}}
 }
 
 // Check audio hardware
-func (rc *RecordControl) CheckAudioHw() {
+func (rc *RecordControl) CheckAudioHw() []Hardware {
     rc.setState(4)
-    rc.AudioHwState = 2
+    return []Hardware{Hardware{Id: 0, Hardware: "/dev/mic0"},Hardware{Id: 0, Hardware: "/dev/mic1"}}
 }
 
 // Check the disk space
-func (rc *RecordControl) CheckDiskspace() {
+func (rc *RecordControl) CheckDiskspace() Disk {
     rc.setState(5)
-    rc.DiskSpaceState = 2
+    return Disk{SpaceAvailable: 100, SpaceTotal: 1000}
 }
 
 // Check the saving location
-func (rc *RecordControl) CheckSavinglocation() {
+func (rc *RecordControl) CheckSavingLocation() bool {
     rc.setState(6)
-    rc.SavingLocationState = 2
+    // Check if saving location as specified in RecordConfig is available, if not create it. Return true if the location is not available and could not be created.
+    return true
 }
 
 // Check if other gstreamer processes are running
-func (rc *RecordControl) CheckGstreamer() {
+func (rc *RecordControl) CheckGstreamer() bool {
     rc.setState(7)
-    rc.GstreamerState = 2
+    //Check if dead and unkillable GStreamer processes are running. Return "true" if no.
+    return true
 }
 
 // Recording (flight)
@@ -86,7 +83,17 @@ func (rc *RecordControl) CheckConfig() {
     rc.setState(1)
 }
 
-// The config class
+// Prepare the recording by checking all prerequisites for the recording
+func (rc *RecordControl) Preflight() {
+    rc.State.Cams = rc.CheckVideoHw()
+    rc.State.Mics = rc.CheckAudioHw()
+    rc.State.Disk = rc.CheckDiskspace()
+    rc.State.LocationOk = rc.CheckSavingLocation()
+    rc.State.GStreamerOk = rc.CheckGstreamer()
+    rc.setState(0)
+}
+
+// The configuration for the recording
 type RecordConfig struct {
     // Record from these cameras
     Cameras []int
@@ -94,4 +101,24 @@ type RecordConfig struct {
     Sid string
     // Saving location
     RecFolder string
+}
+
+// The state of the recording server
+type State struct {
+    Cams []Hardware
+    Mics []Hardware
+    Disk Disk
+    LocationOk bool
+    GStreamerOk bool
+}
+
+type Hardware struct {
+    Id int
+    Hardware string
+}
+
+type Disk struct {
+    // Disk space in GB
+    SpaceAvailable int
+    SpaceTotal int
 }

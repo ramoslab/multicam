@@ -4,7 +4,7 @@ package taskqueue
 import (
     "bitbucket.com/andrews2000/multicam/recordcontrol"
     "fmt"
-    "strconv"
+    //"strconv"
 )
 
 type TaskQueue struct {
@@ -25,32 +25,33 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
             switch cmdPayload {
             case "PREPARE":
                 execPrepare(rc)
-                cmd.Respond("OK:PREPARE")
+                cmd.RespondMessage(Message{Type:"OK", Content: "PREPARE"})
             case "START":
                 execStartRecording(rc)
-                cmd.Respond("OK:START")
+                cmd.RespondMessage(Message{Type:"OK", Content: "START"})
             case "STOP":
                 execStopRecording(rc)
-                cmd.Respond("OK:STOP")
+                cmd.RespondMessage(Message{Type:"OK", Content: "STOP"})
             default:
                 fmt.Println("TQ: REQ[unknown] "+cmdPayload)
-                cmd.Respond("NOTOK:ERROR")
+                cmd.RespondError(Error{Type:"NOTOK", Content: "REQUEST UNKNOWN"})
         }
         case "REQ":
             switch cmdPayload {
             case "STATE":
-                cmd.Respond(strconv.Itoa(rc.GetState()))
+                //cmd.Respond;(strconv.Itoa(rc.GetState()))
+                cmd.RespondState(State{Type:"OK", Content: rc.State})
             default:
                 fmt.Println("TQ: REQ[unknown] "+cmdPayload)
-                cmd.Respond("NOTOK:ERROR")
+                cmd.RespondError(Error{Type:"NOTOK", Content: "REQUEST UNKNOWN"})
             }
         //case "DATA":
         case "ERROR":
             fmt.Println("TQ: ERROR received. "+cmdPayload)
-            cmd.Respond("NOTOK:ERROR")
+            cmd.RespondError(Error{Type:"NOTOK", Content: "REQUEST UNKNOWN"})
         default:
             fmt.Println("TQ: TYPE[unknown] "+cmdType)
-            cmd.Respond("NOTOK:ERROR")
+            cmd.RespondError(Error{Type:"NOTOK", Content: "REQUEST UNKNOWN"})
         }
     }
 }
@@ -110,7 +111,25 @@ func recCtrlIdle(rc *recordcontrol.RecordControl) bool {
 // The interface for command structures
 type Command interface {
     // This function returns a string to the client through the appropriate channel
-    Respond(Str string)
+    RespondMessage(Message)
+    RespondState(State)
+    RespondError(Error)
     GetType() string
     GetPayload() string
+}
+
+// Responses
+type Message struct {
+    Type string
+    Content string
+}
+
+type State struct {
+    Type string
+    Content recordcontrol.State
+}
+
+type Error struct {
+    Type string
+    Content string
 }
