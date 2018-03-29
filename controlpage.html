@@ -8,14 +8,14 @@
 <script src="static/jquery-3.3.1.min.js"></script>
 <script type="text/javascript" src="static/knockout.js"></script>
 </head>
-<body data-bind="style: {backgroundColor: serverstateBg()}">
+<body data-bind="style: {backgroundColor: ServerState().serverstateBg()}">
     <h1>Multicam Controller</h1>
     <div class="active_cams">
         <h2>Active cameras</h2>
         <div class="imagelist_container">
-            <dl class="image" data-bind="foreach: camlist">
+            <dl class="image" data-bind="foreach: ServerState().CamList">
                 <dt>IMAGE: <span data-bind="text: cam_image"></span></dt>
-                <dd>Cam: <span data-bind="text: cam_name"></span></dd>
+                <dd>Cam: <span data-bind="text: cam_path"></span></dd>
             </dl>
         </div>
     </div>
@@ -23,33 +23,35 @@
         <h2>Configuration</h2>
         <ul class="config_list"> 
             <li>
-                Record video from:
-                <dl data-bind="foreach: camlist">
-                    <dt>RADIOBUTTON</dt>
-                    <dd>Cam <span data-bind="text: cam_name"></span></dd>
-                </dl>
+                Record video from: 
+                <ul data-bind="foreach: ServerState().CamList">
+                    <li><input type="checkbox" data-bind="checked: $root.RecordingConfig().RecordCams()[$index()]"/>Camera <span data-bind="text: cam_path"></span></li>
+                </ul>
             </li>
             <li>
                 Record audio from:
-                <dl data-bind="foreach: camlist">
-                    <dt>RADIOBUTTON</dt>
-                    <dd>Cam <span data-bind="text: cam_name"></span></dd>
-                </dl>
+                <ul data-bind="foreach: ServerState().MicList">
+                    <li><input type="checkbox" data-bind="checked: $root.RecordingConfig().RecordMics()[$index()]"/>Microphone <span data-bind="text: mic_path"></span></li>
+                </ul>
             </li>
-                
+            <p>Record files to: <input type="text" size="25" data-bind="value: RecordingConfig().SavingLocation()" /></p>
+            <p>Subject id: <span data-bind="text: RecordingConfig().Sid()" /></p>
     </div>
     <div class="status">
         <h2>Status</h2>
-        <dl data-bind="foreach: statusitems">
-            <dt><span data-bind="text: item_name"></span></dt>
-            <dd><span data-bind="text: item_status"></span></dt>
-        </dl>
+        <ul>
+            <li>Diskspace: <span data-bind="text: ServerState().Disk().space_av()"></span>/<span data-bind="text: ServerState().Disk().space_tot()"></span></li>
+            <li>SavingLocation: <span data-bind="if: ServerState().SavingLocation()">OK</span><span data-bind="ifnot: ServerState().SavingLocation()">NOTOK</span></li>
+            <li>GStreamer: <span data-bind="if: ServerState().GStreamer()">OK</span><span data-bind="ifnot: ServerState().GStreamer()">NOTOK</span></li>
+        </ul>
     </div>
     <div class="control">
         <h2>Manual control</h2>
-        <button type="button" onClick="get_answer()">Get server status</button>
+        <button type="button" onClick="get_state()">Get server status</button>
         <button type="button" onClick="get_answer()">Start recording</button>
         <button type="button" onClick="get_answer()">Stop recording</button>
+        <button type="button" onClick="get_config()">Get current config</button>
+        <button type="button" onClick="get_answer()">Set current config</button>
     </div>
 </body>
 <script type="text/javascript" src="static/controlpage.js"></script>

@@ -33,6 +33,11 @@ func main() {
     for i,cam := range cams_cfg {
         cams[i] = cam.(int)
     }
+    mics_cfg := viper.Get("Recording.Microphones").([]interface{})
+    mics := make([]int, len(mics_cfg))
+    for i,mic := range mics_cfg {
+        mics[i] = mic.(int)
+    }
 
     // Get configuration for the server
     port := viper.GetInt("Server.Port")
@@ -40,7 +45,7 @@ func main() {
 
 
     // Instantiate record control data configuration
-    recCfg := recordcontrol.RecordConfig{Cameras: cams, Sid: sid, RecFolder: recfolder}
+    recCfg := recordcontrol.RecordConfig{Cameras: cams, Microphones: mics, Sid: sid, RecFolder: recfolder}
     //DEBUG
     fmt.Println(recCfg)
     // Instantiate record control data model 

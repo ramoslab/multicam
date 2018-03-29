@@ -3,8 +3,12 @@ Server:
     Port: 9998
 Recording:
     Cameras:
-        - 1
+        - 0
         - 2
         - 3
+    Microphones:
+        - 0
+        - 1
+        - 3
     SID: None
-    RecFolder: recordings
+    RecFolder: /home/tecnalia/recordings

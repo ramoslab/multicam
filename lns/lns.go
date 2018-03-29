@@ -150,6 +150,15 @@ func (cmd UdpCommand) RespondError(msgerr taskqueue.Error) {
     fmt.Println(res)
 }
 
+func (cmd UdpCommand) RespondConfig(msgcfg taskqueue.Config) {
+    // Marshal message into byte array
+    res, _ := json.Marshal(msgcfg)
+    // Write response string to the channel
+    cmd.UdpFeedback <- res
+    //TODO Make response structs
+    fmt.Println(res)
+}
+
 // The implementation of "GetPayload" of the Command interface for UDP
 func (cmd UdpCommand) GetPayload() string {
     return cmd.Payload
@@ -239,6 +248,8 @@ func parseHttpCommand(creq clientRequest, hRespWriter *http.ResponseWriter, http
         switch creq.Value {
         case "STATE":
             retVal = HttpCommand{Type: "REQ", Payload: "STATE", Timestamp: "000", HttpFeedback: httpFeedback}
+        case "CONFIG":
+            retVal = HttpCommand{Type: "REQ", Payload: "CONFIG", Timestamp: "000", HttpFeedback: httpFeedback}
         default:
             //FIXME Proper error handling (using error type)
             retVal = HttpCommand{Type: "ERROR", Payload: "ERROR", Timestamp: "000", HttpFeedback: httpFeedback}
@@ -282,6 +293,15 @@ func (cmd HttpCommand) RespondState(state taskqueue.State) {
 func (cmd HttpCommand) RespondError(msgerr taskqueue.Error) {
     // Marshal message into byte array
     res, _ := json.Marshal(msgerr)
+    // Write response string to the channel
+    cmd.HttpFeedback <- res
+    //TODO Make response structs
+    fmt.Println(res)
+}
+
+func (cmd HttpCommand) RespondConfig(msgcfg taskqueue.Config) {
+    // Marshal message into byte array
+    res, _ := json.Marshal(msgcfg)
     // Write response string to the channel
     cmd.HttpFeedback <- res
     //TODO Make response structs

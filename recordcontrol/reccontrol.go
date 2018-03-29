@@ -35,13 +35,13 @@ func (rc *RecordControl) GetState() int {
 // Get cameras available
 func (rc *RecordControl) CheckVideoHw() []Hardware {
     rc.setState(3)
-    return []Hardware{Hardware{Id: 0, Hardware: "/dev/video0"}, Hardware{Id: 0, Hardware: "/dev/mic1"}}
+    return []Hardware{Hardware{Id: 0, Hardware: "/dev/video0"}, Hardware{Id: 1, Hardware: "/dev/video1"}}
 }
 
 // Check audio hardware
 func (rc *RecordControl) CheckAudioHw() []Hardware {
     rc.setState(4)
-    return []Hardware{Hardware{Id: 0, Hardware: "/dev/mic0"},Hardware{Id: 0, Hardware: "/dev/mic1"}}
+    return []Hardware{Hardware{Id: 0, Hardware: "/dev/mic0"},Hardware{Id: 1, Hardware: "/dev/mic1"}}
 }
 
 // Check the disk space
@@ -97,6 +97,8 @@ func (rc *RecordControl) Preflight() {
 type RecordConfig struct {
     // Record from these cameras
     Cameras []int
+    // Record from these microphones
+    Microphones []int
     // ID of the subject
     Sid string
     // Saving location

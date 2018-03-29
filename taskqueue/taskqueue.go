@@ -40,7 +40,9 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
             switch cmdPayload {
             case "STATE":
                 //cmd.Respond;(strconv.Itoa(rc.GetState()))
-                cmd.RespondState(State{Type:"OK", Content: rc.State})
+                cmd.RespondState(State{Type:"STATE", Content: rc.State})
+            case "CONFIG":
+                cmd.RespondConfig(Config{Type: "CONFIG", Content: rc.Config})
             default:
                 fmt.Println("TQ: REQ[unknown] "+cmdPayload)
                 cmd.RespondError(Error{Type:"NOTOK", Content: "REQUEST UNKNOWN"})
@@ -114,11 +116,13 @@ type Command interface {
     RespondMessage(Message)
     RespondState(State)
     RespondError(Error)
+    RespondConfig(Config)
     GetType() string
     GetPayload() string
 }
 
 // Responses
+//TODO Mit interfaces abstrahieren
 type Message struct {
     Type string
     Content string
@@ -132,4 +136,9 @@ type State struct {
 type Error struct {
     Type string
     Content string
+}
+
+type Config struct {
+    Type string
+    Content recordcontrol.RecordConfig
 }
