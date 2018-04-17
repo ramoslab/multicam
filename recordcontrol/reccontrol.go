@@ -26,8 +26,18 @@ func (rc *RecordControl) setState(newstate int) {
 }
 
 // Return the state value
-func (rc *RecordControl) GetState() int {
+func (rc *RecordControl) GetStateId() int {
     return rc.StateId
+}
+
+// Return the state struct
+func (rc *RecordControl) GetState() int {
+    return rc.State
+}
+
+// Set a new configuration
+func (rc *RecordControl) SetConfig(Cams []int ) {
+
 }
 
 // Checking (preflight)
@@ -124,3 +134,5 @@ type Disk struct {
     SpaceAvailable int
     SpaceTotal int
 }
+
+//TODO implement function: Return error
