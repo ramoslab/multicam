@@ -31,7 +31,7 @@ func (rc *RecordControl) GetStateId() int {
 }
 
 // Return the state struct
-func (rc *RecordControl) GetState() int {
+func (rc *RecordControl) GetState() State {
     return rc.State
 }
 

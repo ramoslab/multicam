@@ -8,7 +8,7 @@ import (
 )
 
 type TaskQueue struct {
-    Queue chan Command
+    Queue chan Task
 }
 
 // Execute tasks until stopping channel is true
@@ -27,8 +27,6 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
         case "ReturnError":
             //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
         case "SetConfig":
-            //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
-        case "ReturnError":
             //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
         case "Preflight":
             //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)

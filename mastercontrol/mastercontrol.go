@@ -53,7 +53,7 @@ func main() {
     rec1.Preflight()
     fmt.Println(rec1)
     // Instantiate task manager 
-    tq1 := taskqueue.TaskQueue{Queue: make(chan taskqueue.Command)}
+    tq1 := taskqueue.TaskQueue{Queue: make(chan taskqueue.Task)}
     //FIXME Immediately writing something on the task queue. If you do not do that the first command goes missing.
     //gtq1.Queue <- "Nada."
 
