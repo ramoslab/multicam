@@ -50,6 +50,7 @@ type Task struct {
     // ConfigStruct for Config requests
     // String for error messages
     //TODO Clarify: String or Struct for data commands (containing trigger information)
+    // Command of recordcontrol asserts the interface into the expected type for that command
     Data interface{}
     //TODO Include the use of the timestamp object
     // Feedback channel for the response of the client
