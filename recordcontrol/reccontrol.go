@@ -20,24 +20,29 @@ type RecordControl struct {
     //5 is checking disk space;
     //6 is checking if the saving location exists;
     //7 is checking if other gstreamer processes are running 
-    StateId int
+    State int
     // The actual state
-    State State
+    Status Status
 }
 
 // Update the state value 
 func (rc *RecordControl) setState(newstate int) {
-    rc.StateId = newstate
+    rc.State = newstate
 }
 
 // Return the state value
 func (rc *RecordControl) GetStateId() int {
-    return rc.StateId
+    return rc.State
 }
 
-// Return the state struct
-func (rc *RecordControl) GetState() State {
-    return rc.State
+// Return the status struct
+func (rc *RecordControl) GetStatus() Status {
+    return rc.Status
+}
+
+// Return the config struct
+func (rc *RecordControl) GetConfig() RecordConfig {
+    return rc.Config
 }
 
 // Set a new configuration
@@ -46,8 +51,8 @@ func (rc *RecordControl) SetConfig(Cams []int ) {
 }
 
 // Create an empty state
-func CreateEmptyState() State {
-    var state State
+func CreateEmptyStatus() Status {
+    var state Status
     state.Cams = []Hardware{}
     state.Mics = []Hardware{}
     state.Disk = Disk{}
@@ -55,6 +60,17 @@ func CreateEmptyState() State {
     state.GStreamerOk = false
 
     return state
+}
+
+// Create an empty state
+func CreateEmptyConfig() RecordConfig {
+    var config RecordConfig
+    config.Cameras = []int{}
+    config.Microphones = []int{}
+    config.Sid = ""
+    config.RecFolder = ""
+
+    return config
 }
 
 // Checking (preflight)
@@ -103,38 +119,80 @@ func (rc *RecordControl) StopRecording() {
     rc.setState(0)
 }
 
-//TODO Does the State of the system (video and audio hardware and saving location) match the configuration
+//TODO Does the Status of the system (video and audio hardware and saving location) match the configuration
 //FIXME Oder soll das lieber oben einzeln geprüft werden?
-func (rc *RecordControl) CheckConfig() {
-    // If configuration matches, set state to 1 ("ready for recording")
-    rc.setState(1)
+//TODO Funktion, die eine gegebene Config mit dem Status testet
+// Checks if the given configuration matches the current status
+func (rc *RecordControl) CheckConfig(config RecordConfig) bool {
+    var retVal bool
+    // Check cameras
+    for _,n := range config.Cameras {
+        if n < len(rc.Status.Cams) {
+            retVal = true
+        }
+    }
+
+    // Check microphones
+    for _,n := range config.Microphones {
+        if n < len(rc.Status.Mics) {
+            retVal = retVal && true
+        } else {
+            retVal = retVal && false
+        }
+    }
+
+    // Check saving location
+    retVal = retVal && rc.CheckSavingLocation()
+
+    return retVal
 }
 
 // Prepare the recording by checking all prerequisites for the recording
 func (rc *RecordControl) Preflight() {
-    rc.State.Cams = rc.CheckVideoHw()
-    rc.State.Mics = rc.CheckAudioHw()
-    rc.State.Disk = rc.CheckDiskspace()
-    rc.State.LocationOk = rc.CheckSavingLocation()
-    rc.State.GStreamerOk = rc.CheckGstreamer()
+    rc.Status.Cams = rc.CheckVideoHw()
+    rc.Status.Mics = rc.CheckAudioHw()
+    rc.Status.Disk = rc.CheckDiskspace()
+    rc.Status.LocationOk = rc.CheckSavingLocation()
+    rc.Status.GStreamerOk = rc.CheckGstreamer()
     rc.setState(0)
 }
 
-// Function generating STATE reply for the client
+// Function generating the STATE response for the client
 // Returns the marshalled JSON byte array of the state struct
-func (rc *RecordControl) TaskGetState() []byte {
+func (rc *RecordControl) TaskGetStatus() []byte {
     // Run Preflight to get the current state
     rc.Preflight()
     // Marshal the state into JSON
-    retVal, err := json.Marshal(rc.GetState())
+    retVal, err := json.Marshal(rc.GetStatus())
     // FIXME Proper error handling
     if err != nil {
         fmt.Println("Error marshalling state", err)
         // If marshalling fails, return empty state
-        emptyState := CreateEmptyState()
-        retVal, _ = json.Marshal(emptyState)
+        emptyStatus := CreateEmptyStatus()
+        retVal, _ = json.Marshal(emptyStatus)
     }
     return retVal
+}
+
+// Function generating the CONFIG response for the client
+// Returns the marshalled JSON byte array of the config struct
+func (rc *RecordControl) TaskGetConfig() []byte {
+    // Marshal the config into JSON
+    retVal, err := json.Marshal(rc.GetConfig())
+    // FIXME Proper error handling
+    if err != nil {
+        fmt.Println("Error marshalling config", err)
+        // If marshalling fails, return empty state
+        emptyConfig := CreateEmptyConfig()
+        retVal, _ = json.Marshal(emptyConfig)
+    }
+    return retVal
+}
+
+// Set the config given by the client
+// Generate the SETCONFIG response for the client
+func (rc *RecordControl) TaskSetConfig(config RecordConfig) []byte {
+   return []byte{} 
 }
 
 
@@ -151,7 +209,7 @@ type RecordConfig struct {
 }
 
 // The state of the recording server
-type State struct {
+type Status struct {
     Cams []Hardware
     Mics []Hardware
     Disk Disk

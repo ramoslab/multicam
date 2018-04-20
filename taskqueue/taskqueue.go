@@ -20,16 +20,12 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
         fmt.Println("TQ: "+cmdType)
 
         switch cmdType  {
-        case "Error":
-            //TODO run error handling function of task queue
         case "GetState":
-            //Execute command on recordcontrol and write to feedback channel 
-            fmt.Println(rc.TaskGetState())
-            cmd.FeedbackChannel <- rc.TaskGetState()
-        case "ReturnError":
-            //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
+            cmd.FeedbackChannel <- rc.TaskGetStatus()
+        case "GetConfig":
+            cmd.FeedbackChannel <- rc.TaskGetConfig()
         case "SetConfig":
-            //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
+            //cmd.FeedbackChannel <- rc.TaskSetConfig(cmd.Data)
         case "Preflight":
             //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
         case "StartRecording":
@@ -37,6 +33,10 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
         case "StopRecording":
             //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
             //TODO Check first if possible
+        case "Error":
+            //TODO run error handling function of task queue
+        case "ReturnError":
+            //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
         default:
             //TODO Some sort of error handling
         }

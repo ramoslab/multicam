@@ -129,18 +129,18 @@ function get_config() {
     var done_fct = function(json) {
 
         CPVM.RecordingConfig(new RecordingConfig());
-        $.each(json['Content']['Cameras'], function(i,item) {
+        $.each(json['Cameras'], function(i,item) {
             camExists = findCam(CPVM.ServerState,item);
             CPVM.RecordingConfig().RecordCams.push(camExists);
         });
-        $.each(json['Content']['Microphones'], function(i,item) {
+        $.each(json['Microphones'], function(i,item) {
             micExists = findMic(CPVM.ServerState,item);
             console.log(micExists)
             CPVM.RecordingConfig().RecordMics.push(micExists);
         });
         
-        CPVM.RecordingConfig().SavingLocation(json['Content']['RecFolder']);
-        CPVM.RecordingConfig().Sid(json['Content']['Sid']);
+        CPVM.RecordingConfig().SavingLocation(json['RecFolder']);
+        CPVM.RecordingConfig().Sid(json['Sid']);
         console.log(json);
     }
 
@@ -152,7 +152,7 @@ function set_config() {
 
     var config = {
         url: "http://localhost:8040/request",
-        data: JSON.stringify({"Command": "REs", "value": "CONFIG"}),
+        data: JSON.stringify({"Command": "POST", "DATA": {"CmdType":"SETCONFIG"}}),
         type: "POST",
         contentType: "application/json", // Request
         dataType: "json" // Response

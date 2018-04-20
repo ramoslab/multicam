@@ -49,7 +49,7 @@ func main() {
     //DEBUG
     fmt.Println(recCfg)
     // Instantiate record control data model 
-    rec1 := recordcontrol.RecordControl{StateId: 0, Config: recCfg}
+    rec1 := recordcontrol.RecordControl{State: 0, Config: recCfg}
     rec1.Preflight()
     fmt.Println(rec1)
     // Instantiate task manager 
@@ -94,7 +94,7 @@ func main() {
     handler := co.Handler(mux)
 
     //DEBUG
-    fmt.Println("Current state: ",rec1.GetState())
+    fmt.Println("Current state: ",rec1.GetStatus())
 
     // Start the routine that listens over UDP
     go serveUdp.Run(qudp)
@@ -104,7 +104,7 @@ func main() {
     tq1.ExecuteTask(&rec1)
 
     //DEBUG
-    fmt.Println("Current state: ",rec1.GetState())
+    fmt.Println("Current state: ",rec1.GetStatus())
 }
 
 //TODO It remains an open question if the stopAndExit procedure should remain here or go to the TaskQueue

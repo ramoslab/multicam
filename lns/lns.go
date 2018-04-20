@@ -228,6 +228,16 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
             //FIXME Proper error handling (using error type)
                 retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
         }
+    case "POST":
+        // Type assertion for Data as map
+        creqData, ok := creq["Data"].(map[string]interface{})
+        if !ok {
+            //FIXME Error handling
+            fmt.Println("Error running type assertion.")
+        }
+        switch creqData["CmdType"] {
+        }
+
     case "CTL":
         creqData, ok := creq["Data"].(map[string]interface{})
         if !ok {
