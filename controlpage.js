@@ -99,16 +99,16 @@ function get_state() {
 
         CPVM.ServerState(new ServerState());
         CPVM.ServerState().StateId(0);
-        $.each(json['Content']['Cams'], function() {
+        $.each(json['Cams'], function() {
             CPVM.ServerState().CamList.push(new Camera(this.Id,this.Hardware,"image_path"));
         });
-        $.each(json['Content']['Mics'], function() {
+        $.each(json['Mics'], function() {
             CPVM.ServerState().MicList.push(new Microphone(this.Id,this.Hardware));
         });
         
-        CPVM.ServerState().Disk(new Disk(json['Content']['Disk']['SpaceAvailable'], json['Content']['Disk']['SpaceTotal']));
-        CPVM.ServerState().SavingLocation(json['Content']['LocationOk']);
-        CPVM.ServerState().GStreamer(json['Content']['GStreamerOk']);
+        CPVM.ServerState().Disk(new Disk(json['Disk']['SpaceAvailable'], json['Disk']['SpaceTotal']));
+        CPVM.ServerState().SavingLocation(json['LocationOk']);
+        CPVM.ServerState().GStreamer(json['GStreamerOk']);
         console.log(json);
     }
 

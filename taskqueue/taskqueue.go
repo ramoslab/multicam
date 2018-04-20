@@ -23,7 +23,9 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
         case "Error":
             //TODO run error handling function of task queue
         case "GetState":
-            //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
+            //Execute command on recordcontrol and write to feedback channel 
+            fmt.Println(rc.TaskGetState())
+            cmd.FeedbackChannel <- rc.TaskGetState()
         case "ReturnError":
             //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
         case "SetConfig":

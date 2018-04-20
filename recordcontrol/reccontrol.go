@@ -2,6 +2,11 @@
 //package recordControl
 package recordcontrol
 
+import (
+    "encoding/json"
+    "fmt"
+)
+
 // The record control class
 type RecordControl struct {
     // The current configuration structure
@@ -38,6 +43,18 @@ func (rc *RecordControl) GetState() State {
 // Set a new configuration
 func (rc *RecordControl) SetConfig(Cams []int ) {
 
+}
+
+// Create an empty state
+func CreateEmptyState() State {
+    var state State
+    state.Cams = []Hardware{}
+    state.Mics = []Hardware{}
+    state.Disk = Disk{}
+    state.LocationOk = false
+    state.GStreamerOk = false
+
+    return state
 }
 
 // Checking (preflight)
@@ -102,6 +119,24 @@ func (rc *RecordControl) Preflight() {
     rc.State.GStreamerOk = rc.CheckGstreamer()
     rc.setState(0)
 }
+
+// Function generating STATE reply for the client
+// Returns the marshalled JSON byte array of the state struct
+func (rc *RecordControl) TaskGetState() []byte {
+    // Run Preflight to get the current state
+    rc.Preflight()
+    // Marshal the state into JSON
+    retVal, err := json.Marshal(rc.GetState())
+    // FIXME Proper error handling
+    if err != nil {
+        fmt.Println("Error marshalling state", err)
+        // If marshalling fails, return empty state
+        emptyState := CreateEmptyState()
+        retVal, _ = json.Marshal(emptyState)
+    }
+    return retVal
+}
+
 
 // The configuration for the recording
 type RecordConfig struct {

@@ -58,8 +58,6 @@ func (rudps RecUdpServer) Run(q chan bool) {
 
                 //DEBUG
                 fmt.Println("Received ", string(buf[0:n]))
-                
-                
                 //rudps.Conn.WriteToUDP([]byte("Great"), rudps.Addr)
 
                 // Send response to client
