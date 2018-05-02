@@ -214,7 +214,7 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
             fmt.Println("Error running type assertion.")
         }
         switch creqData["CmdType"] {
-        case "GETSTATE":
+        case "GETSTATUS":
             retVal = taskqueue.Task{Command: "GetState", Data: nil, FeedbackChannel: httpFeedback}
         case "GETCONFIG":
             //var data taskqueue.ConfigStruct
@@ -236,6 +236,9 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
             fmt.Println("Error running type assertion.")
         }
         switch creqData["CmdType"] {
+            case "SETCONFIG":
+                retVal = taskqueue.Task{Command: "SetConfig", Data: nil, FeedbackChannel: httpFeedback}
+                //FIXME Enter proper command here
         }
 
     case "CTL":

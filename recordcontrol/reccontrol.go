@@ -5,6 +5,10 @@ package recordcontrol
 import (
     "encoding/json"
     "fmt"
+    "os"
+    "os/exec"
+    "syscall"
+    "math"
 )
 
 // The record control class
@@ -87,23 +91,55 @@ func (rc *RecordControl) CheckAudioHw() []Hardware {
     return []Hardware{Hardware{Id: 0, Hardware: "/dev/mic0"},Hardware{Id: 1, Hardware: "/dev/mic1"}}
 }
 
-// Check the disk space
+// Check the disk space of the disk that contains the recording folder
 func (rc *RecordControl) CheckDiskspace() Disk {
     rc.setState(5)
-    return Disk{SpaceAvailable: 100, SpaceTotal: 1000}
+    var stat syscall.Statfs_t
+    //FIXME error handling
+    syscall.Statfs(rc.Config.RecFolder, &stat)
+
+    return Disk{SpaceAvailable: stat.Bavail * uint64(stat.Bsize) / uint64(math.Pow(1024,3)),
+                SpaceTotal: stat.Blocks * uint64(stat.Bsize) / uint64(math.Pow(1024,3))}
 }
 
 // Check the saving location
 func (rc *RecordControl) CheckSavingLocation() bool {
     rc.setState(6)
-    // Check if saving location as specified in RecordConfig is available, if not create it. Return true if the location is not available and could not be created.
-    return true
+    var retVal bool
+    // Check if saving location as specified in RecordConfig is available, if not create it. Return false if the location is not available and could not be created.
+    _,err := os.Stat(rc.Config.RecFolder)
+    if err == nil {
+        retVal = true
+    }
+    if os.IsNotExist(err) {
+        err = os.MkdirAll(rc.Config.RecFolder, os.ModePerm)
+        if err != nil {
+            retVal = false
+        } else {
+            retVal = true
+        }
+    } else {
+        retVal = true
+    }
+    rc.CheckGstreamer()
+    rc.setState(0)
+    return retVal
 }
 
 // Check if other gstreamer processes are running
 func (rc *RecordControl) CheckGstreamer() bool {
+
     rc.setState(7)
     //Check if dead and unkillable GStreamer processes are running. Return "true" if no.
+    //TODO Implement properly later
+    out, err := exec.Command("sh", "-c", "ps -aux | grep GStreamer").Output()
+
+    fmt.Println("Result:",string(out))
+    if err != nil {
+        fmt.Println(err)
+    }
+
+
     return true
 }
 
@@ -191,10 +227,15 @@ func (rc *RecordControl) TaskGetConfig() []byte {
 
 // Set the config given by the client
 // Generate the SETCONFIG response for the client
-func (rc *RecordControl) TaskSetConfig(config RecordConfig) []byte {
-   return []byte{} 
+//func (rc *RecordControl) TaskSetConfig(config RecordConfig) []byte {
+func (rc *RecordControl) TaskSetConfig() []byte {
+    result := rc.CheckSavingLocation()
+    fmt.Println("Task set config:",result)
+    return []byte{}
 }
 
+// Function running the preflight to check the hardware status of the system
+// Return the marshalled JSON byte array (including a message to the client)
 
 // The configuration for the recording
 type RecordConfig struct {
@@ -224,8 +265,8 @@ type Hardware struct {
 
 type Disk struct {
     // Disk space in GB
-    SpaceAvailable int
-    SpaceTotal int
+    SpaceAvailable uint64
+    SpaceTotal uint64
 }
 
 //TODO implement function: Return error

@@ -89,7 +89,7 @@ function get_state() {
 
     var config = {
         url: "http://localhost:8040/request",
-        data: JSON.stringify({"Command": "REQ", "Data": {"CmdType":"GETSTATE"}}),
+        data: JSON.stringify({"Command": "REQ", "Data": {"CmdType":"GETSTATUS"}}),
         type: "POST",
         contentType: "application/json", // Request
         dataType: "json" // Response
@@ -152,7 +152,7 @@ function set_config() {
 
     var config = {
         url: "http://localhost:8040/request",
-        data: JSON.stringify({"Command": "POST", "DATA": {"CmdType":"SETCONFIG"}}),
+        data: JSON.stringify({"Command": "POST", "Data": {"CmdType":"SETCONFIG"}}),
         type: "POST",
         contentType: "application/json", // Request
         dataType: "json" // Response

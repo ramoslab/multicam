@@ -40,7 +40,7 @@
     <div class="status">
         <h2>Status</h2>
         <ul>
-            <li>Diskspace: <span data-bind="text: ServerState().Disk().space_av()"></span>/<span data-bind="text: ServerState().Disk().space_tot()"></span></li>
+            <li>Diskspace: <span data-bind="text: ServerState().Disk().space_av()"></span>/<span data-bind="text: ServerState().Disk().space_tot()"></span>&nbsp;GB</li>
             <li>SavingLocation: <span data-bind="if: ServerState().SavingLocation()">OK</span><span data-bind="ifnot: ServerState().SavingLocation()">NOTOK</span></li>
             <li>GStreamer: <span data-bind="if: ServerState().GStreamer()">OK</span><span data-bind="ifnot: ServerState().GStreamer()">NOTOK</span></li>
         </ul>
@@ -51,7 +51,7 @@
         <button type="button" onClick="get_config()">Get current config</button>
         <button type="button" onClick="get_answer()">Start recording</button>
         <button type="button" onClick="get_answer()">Stop recording</button>
-        <button type="button" onClick="get_answer()">Set current config</button>
+        <button type="button" onClick="set_config()">Set current config</button>
     </div>
 </body>
 <script type="text/javascript" src="static/controlpage.js"></script>
