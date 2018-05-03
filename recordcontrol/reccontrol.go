@@ -8,7 +8,9 @@ import (
     "os"
     "os/exec"
     "syscall"
+    "io/ioutil"
     "math"
+    "strings"
 )
 
 // The record control class
@@ -83,7 +85,35 @@ func CreateEmptyConfig() RecordConfig {
 // Get cameras available
 func (rc *RecordControl) CheckVideoHw() []Hardware {
     rc.setState(3)
-    return []Hardware{Hardware{Id: 0, Hardware: "/dev/video0"}, Hardware{Id: 1, Hardware: "/dev/video1"}}
+    files, err := ioutil.ReadDir("/dev/")
+    //FIXME error handling
+    if err != nil {
+        fmt.Println("Error",err)
+    }
+
+    // Retrieve all available cameras
+    var cams []string
+
+    fmt.Println("Available Webcams:")
+    for _, f := range files {
+        if strings.HasPrefix(f.Name(), "video") {
+            fmt.Println("/dev/"+f.Name())
+            cams = append(cams, "/dev/"+f.Name())
+        }
+    }
+    //TODO Retrieve all available microphones
+    var mics []string
+
+    hardware := make([]Hardware,len(cams)+len(mics))
+
+    // Add all available cams to the hardware list
+    for i, cam := range cams {
+        hardware[i] = Hardware{Id: i, Hardware: cam}
+    }
+
+    //TODO Add all available mics to the hardware list
+
+    return hardware
 }
 
 // Check audio hardware
