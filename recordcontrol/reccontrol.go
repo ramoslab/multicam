@@ -230,8 +230,10 @@ func (rc *RecordControl) TaskGetConfig() []byte {
 // Generate the SETCONFIG response for the client
 //func (rc *RecordControl) TaskSetConfig(config RecordConfig) []byte {
 func (rc *RecordControl) TaskSetConfig(config RecordConfig) []byte {
-    rc.SetConfig(config)
     fmt.Println("Setting new config.")
+    rc.SetConfig(config)
+    fmt.Println("Checking new config.")
+    rc.CheckConfig(config)
     return rc.TaskGetConfig()
 }
 
