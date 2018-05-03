@@ -4,7 +4,6 @@
 function ControlPageViewModel() {
     var self = this;
     self.ServerStatus = ko.observable();
-    self.ServerConfig = ko.observable();
     self.RecordingConfig = ko.observable();
 }
 
@@ -57,7 +56,7 @@ function Disk(space_av, space_tot) {
     self.space_tot = ko.observable(space_tot);
 }
 
-// The configuration (if untouched it represents the current config of the server; if touched, it can be used to set a new configuration)
+// The configuration setting of the client 
 function RecordingConfig() {
     var self = this;
     self.RecordCams = ko.observableArray([]);
@@ -183,7 +182,6 @@ function fail_fct(xhr, status, errorThrown) {
 
 // Set the config of the client in the UI
 function set_client_config(json) {
-    CPVM.ServerConfig(new RecordingConfig());
     console.log(json);
     // Reset cameras to "not recording"
     $.each(CPVM.ServerStatus().CamList(), function(i,item) {
@@ -193,7 +191,7 @@ function set_client_config(json) {
     $.each(json['Cameras'], function(i,item) {
         camExists = findCam(CPVM.ServerStatus,item);
         if (camExists) {
-            CPVM.ServerStatus().CamList()[i].cfg_record(true);
+            CPVM.ServerStatus().CamList()[item].cfg_record(true);
         }
     });
     // Reset microphones to "not recording"
@@ -204,7 +202,7 @@ function set_client_config(json) {
     $.each(json['Microphones'], function(i,item) {
         micExists = findMic(CPVM.ServerStatus,item);
         if (micExists) {
-            CPVM.ServerStatus().MicList()[i].cfg_record(true);
+            CPVM.ServerStatus().MicList()[item].cfg_record(true);
         }
     });
     
