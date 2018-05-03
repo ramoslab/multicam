@@ -215,7 +215,7 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
         }
         switch creqData["CmdType"] {
         case "GETSTATUS":
-            retVal = taskqueue.Task{Command: "GetState", Data: nil, FeedbackChannel: httpFeedback}
+            retVal = taskqueue.Task{Command: "GetStatus", Data: nil, FeedbackChannel: httpFeedback}
         case "GETCONFIG":
             //var data taskqueue.ConfigStruct
             //if err := json.Unmarshal(creq.Data[1], &data); err != nil {
@@ -237,7 +237,14 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
         }
         switch creqData["CmdType"] {
             case "SETCONFIG":
-                retVal = taskqueue.Task{Command: "SetConfig", Data: nil, FeedbackChannel: httpFeedback}
+                payload, ok := creqData["Values"].(map[string]interface{})
+                fmt.Println(payload["Cameras"])
+                if ok {
+                    fmt.Println(payload)
+                } else {
+                    fmt.Println("CONFIG not ok")
+                }
+                retVal = taskqueue.Task{Command: "SetConfig", Data: payload, FeedbackChannel: httpFeedback}
                 //FIXME Enter proper command here
         }
 

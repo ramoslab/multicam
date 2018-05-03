@@ -7,6 +7,12 @@
 <link rel="stylesheet" href="static/controlpage.css" type="text/css" media="screen" />
 <script src="static/jquery-3.3.1.min.js"></script>
 <script type="text/javascript" src="static/knockout.js"></script>
+<script>
+    $(document).ready(function() {
+        get_status()
+        get_config();
+    });
+</script>
 </head>
 <body data-bind="style: {backgroundColor: ServerStatus().serverstateBg()}">
     <h1>Multicam Controller</h1>
@@ -63,8 +69,8 @@
                     <li><input type="checkbox" data-bind="checked: $root.RecordingConfig().RecordMics()[$index()]"/>Microphone <span data-bind="text: mic_path"></span></li>
                 </ul>
             </li>
-            <p>Record files to: <input type="text" size="25" data-bind="value: RecordingConfig().SavingLocation()" /></p>
-            <p>Subject id: <input type="text" size="25" data-bind="value: RecordingConfig().SavingLocation()" /></p>
+            <p>Record files to: <input type="text" size="25" data-bind="value: RecordingConfig().SavingLocation" /></p>
+            <p>Subject id: <input type="text" size="25" data-bind="value: RecordingConfig().Sid" /></p>
         <button type="button" onClick="set_config()">Set current config</button>
     </div>
     <div class="control">

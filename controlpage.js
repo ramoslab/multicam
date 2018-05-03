@@ -60,10 +60,10 @@ function Disk(space_av, space_tot) {
 // The configuration (if untouched it represents the current config of the server; if touched, it can be used to set a new configuration)
 function RecordingConfig() {
     var self = this;
-    self.RecordCams = ko.observableArray();
-    self.RecordMics = ko.observableArray();
-    self.SavingLocation = ko.observable();
-    self.Sid = ko.observable();
+    self.RecordCams = ko.observableArray([]);
+    self.RecordMics = ko.observableArray([]);
+    self.SavingLocation = ko.observable("");
+    self.Sid = ko.observable("");
 }
 
 // Find a camera id in the ServerStatus (e.g. for checking if a camera of the configuation is actually available)
@@ -134,24 +134,7 @@ function get_config() {
     };
 
     var done_fct = function(json) {
-
-        CPVM.ServerConfig(new RecordingConfig());
-        $.each(json['Cameras'], function(i,item) {
-            camExists = findCam(CPVM.ServerStatus,item);
-            if (camExists) {
-                CPVM.ServerStatus().CamList()[i].cfg_record(true);
-            }
-        });
-        $.each(json['Microphones'], function(i,item) {
-            micExists = findMic(CPVM.ServerStatus,item);
-            if (micExists) {
-                CPVM.ServerStatus().MicList()[i].cfg_record(true);
-            }
-        });
-        
-        CPVM.ServerStatus().SavingLocation(json['RecFolder']);
-        CPVM.ServerStatus().Sid(json['Sid']);
-        console.log(json);
+        set_client_config(json);
     }
 
     $.ajax(config).done(done_fct).fail(fail_fct);
@@ -160,30 +143,33 @@ function get_config() {
 // Set current configuration on the server
 function set_config() {
 
+    // Extract camera indices
+    var record_from_cam = []
+    $.each(CPVM.RecordingConfig().RecordCams(), function(i, item) {
+        if (item) {
+            record_from_cam.push(CPVM.ServerStatus().CamList()[i].cam_id());
+        }
+    });
+    
+    // Extract microphone indices
+    var record_from_mic = []
+    $.each(CPVM.RecordingConfig().RecordMics(), function(i, item) {
+        if (item) {
+            record_from_mic.push(CPVM.ServerStatus().MicList()[i].mic_id());
+        }
+    });
+
     var config = {
         url: "http://localhost:8040/request",
-        data: JSON.stringify({"Command": "POST", "Data": {"CmdType":"SETCONFIG"}}),
+        data: JSON.stringify({"Command": "POST", "Data": {"CmdType":"SETCONFIG", "Values": {"Cameras" : record_from_cam, "Microphones": record_from_mic, "RecFolder": CPVM.RecordingConfig().SavingLocation(), "Sid": CPVM.RecordingConfig().Sid()}}}),
         type: "POST",
         contentType: "application/json", // Request
         dataType: "json" // Response
     };
 
+    // Response is the current config of the server
     var done_fct = function(json) {
-
-        CPVM.RecordingConfig(new RecordingConfig());
-        $.each(json['Content']['Cameras'], function(i,item) {
-            camExists = findCam(CPVM.ServerStatus,item);
-            CPVM.RecordingConfig().RecordCams.push(camExists);
-        });
-        $.each(json['Content']['Microphones'], function(i,item) {
-            micExists = findMic(CPVM.ServerStatus,item);
-            console.log(micExists)
-            CPVM.RecordingConfig().RecordMics.push(micExists);
-        });
-        
-        CPVM.RecordingConfig().SavingLocation(json['Content']['RecFolder']);
-        CPVM.RecordingConfig().Sid(json['Content']['Sid']);
-        console.log(json);
+        set_client_config(json);
     }
 
     $.ajax(config).done(done_fct).fail(fail_fct);
@@ -194,6 +180,39 @@ function fail_fct(xhr, status, errorThrown) {
     console.log("Status: " + status);
     console.log(xhr);
 }
+
+// Set the config of the client in the UI
+function set_client_config(json) {
+    CPVM.ServerConfig(new RecordingConfig());
+    console.log(json);
+    // Reset cameras to "not recording"
+    $.each(CPVM.ServerStatus().CamList(), function(i,item) {
+        item.cfg_record(false);
+    });
+    // Set recording state to cameras according to config from server
+    $.each(json['Cameras'], function(i,item) {
+        camExists = findCam(CPVM.ServerStatus,item);
+        if (camExists) {
+            CPVM.ServerStatus().CamList()[i].cfg_record(true);
+        }
+    });
+    // Reset microphones to "not recording"
+    $.each(CPVM.ServerStatus().MicList(), function(i,item) {
+        item.cfg_record(false);
+    });
+    // Set recording state to microphones according to config from server
+    $.each(json['Microphones'], function(i,item) {
+        micExists = findMic(CPVM.ServerStatus,item);
+        if (micExists) {
+            CPVM.ServerStatus().MicList()[i].cfg_record(true);
+        }
+    });
+    
+    CPVM.ServerStatus().SavingLocation(json['RecFolder']);
+    CPVM.ServerStatus().Sid(json['Sid']);
+    console.log(json);
+}
+
 
 // Instantiating of the viewmodel and application of the bindings
 

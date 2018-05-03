@@ -50,8 +50,9 @@ func (rc *RecordControl) GetConfig() RecordConfig {
 }
 
 // Set a new configuration
-func (rc *RecordControl) SetConfig(Cams []int ) {
-
+func (rc *RecordControl) SetConfig(config RecordConfig) {
+    rc.Config = config
+    fmt.Println("Setting config as:",config)
 }
 
 // Create an empty state
@@ -121,7 +122,7 @@ func (rc *RecordControl) CheckSavingLocation() bool {
     } else {
         retVal = true
     }
-    rc.CheckGstreamer()
+    //rc.CheckGstreamer()
     rc.setState(0)
     return retVal
 }
@@ -132,9 +133,9 @@ func (rc *RecordControl) CheckGstreamer() bool {
     rc.setState(7)
     //Check if dead and unkillable GStreamer processes are running. Return "true" if no.
     //TODO Implement properly later
-    out, err := exec.Command("sh", "-c", "ps -aux | grep GStreamer").Output()
+    _, err := exec.Command("sh", "-c", "ps -aux | grep GStreamer").Output()
 
-    fmt.Println("Result:",string(out))
+    //fmt.Println("Result:",string(out))
     if err != nil {
         fmt.Println(err)
     }
@@ -228,10 +229,10 @@ func (rc *RecordControl) TaskGetConfig() []byte {
 // Set the config given by the client
 // Generate the SETCONFIG response for the client
 //func (rc *RecordControl) TaskSetConfig(config RecordConfig) []byte {
-func (rc *RecordControl) TaskSetConfig() []byte {
-    result := rc.CheckSavingLocation()
-    fmt.Println("Task set config:",result)
-    return []byte{}
+func (rc *RecordControl) TaskSetConfig(config RecordConfig) []byte {
+    rc.SetConfig(config)
+    fmt.Println("Setting new config.")
+    return rc.TaskGetConfig()
 }
 
 // Function running the preflight to check the hardware status of the system

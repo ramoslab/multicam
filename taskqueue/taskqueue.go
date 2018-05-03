@@ -20,13 +20,27 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
         fmt.Println("TQ: "+cmdType)
 
         switch cmdType  {
-        case "GetState":
+        case "GetStatus":
             cmd.FeedbackChannel <- rc.TaskGetStatus()
         case "GetConfig":
             cmd.FeedbackChannel <- rc.TaskGetConfig()
         case "SetConfig":
-            cmd.FeedbackChannel <- rc.TaskSetConfig()
-            //cmd.FeedbackChannel <- rc.TaskSetConfig(cmd.Data)
+            data := cmd.Data.(map[string]interface{})
+
+            cams_cfg := data["Cameras"].([]interface{})
+            cams := make([]int, len(cams_cfg))
+            for i,cam := range cams_cfg {
+                cams[i] = int(cam.(float64))
+            }
+
+            mics_cfg := data["Microphones"].([]interface{})
+            mics := make([]int, len(mics_cfg))
+            for i,mic := range mics_cfg {
+                mics[i] = int(mic.(float64))
+            }
+
+            recConfig := recordcontrol.RecordConfig{Cameras: cams, Microphones: mics, Sid: data["Sid"].(string), RecFolder: data["RecFolder"].(string)}
+            cmd.FeedbackChannel <- rc.TaskSetConfig(recConfig)
         case "Preflight":
             //cmd.FeedbackChannel <- rc.TaskPreflight()
             //TODO This task is only internal. Clients can't execute it.
