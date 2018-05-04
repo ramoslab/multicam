@@ -20,6 +20,8 @@ function ServerStatus() {
     self.SavingLocation = ko.observable("");
     self.Sid = ko.observable("(unknown subject)");
 
+
+
     //self.serverstateBg = ko.computed(function() {
     //    switch (self.ServerStatus().StateId()) {
     //        case "-1": return '#333'; 
@@ -87,7 +89,6 @@ function findMic(serverState,mic_id) {
     return retVal;
 }
 
-
 // Request and control functions via the http side of the server
 
 // Get state of the server
@@ -105,8 +106,8 @@ function get_status() {
 
         CPVM.ServerStatus(new ServerStatus());
         CPVM.ServerStatus().StateId(0);
-        $.each(json['Cams'], function() {
-            CPVM.ServerStatus().CamList.push(new Camera(this.Id,this.Hardware,"image_path", false));
+        $.each(json['Cams'], function(i,item) {
+            CPVM.ServerStatus().CamList.push(new Camera(this.Id,this.Hardware,"static/captmpv"+i+".jpg#"+new Date().getTime(), false));
         });
         $.each(json['Mics'], function() {
             CPVM.ServerStatus().MicList.push(new Microphone(this.Id,this.Hardware,false));

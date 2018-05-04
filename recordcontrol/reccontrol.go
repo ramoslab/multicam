@@ -214,6 +214,34 @@ func (rc *RecordControl) CheckConfig(config RecordConfig) bool {
     return retVal
 }
 
+// Capture single frame of webcam and store in jpg file using fscam
+func (rc RecordControl) CaptureFrame() {
+    for i,_ := range rc.Status.Cams {
+        fmt.Println(i)
+
+        // Check for previous capture and delete it
+        //fname := "captmp_v"+string(i)+".jpg"
+        fname := fmt.Sprintf("static/captmpv%d.jpg",i)
+        _,err := os.Stat(fname)
+        if err == nil {
+            fmt.Println("Error during capture:",err)
+        }
+
+        if !os.IsNotExist(err) {
+            os.Remove(fname)
+        }
+        // Capture frame 
+        argstr := []string{"--jpeg","80","--save",fname}
+        cmd := exec.Command("fswebcam",argstr...)
+        _, err = cmd.Output()
+        if err != nil {
+            fmt.Println(err)
+        }
+        fmt.Println("Captured frame:",fname)
+    }
+
+}
+
 // Prepare the recording by checking all prerequisites for the recording
 func (rc *RecordControl) Preflight() {
     rc.Status.Cams = rc.CheckVideoHw()
@@ -229,6 +257,8 @@ func (rc *RecordControl) Preflight() {
 func (rc *RecordControl) TaskGetStatus() []byte {
     // Run Preflight to get the current state
     rc.Preflight()
+    // Capture still image from all webcams
+    rc.CaptureFrame()
     // Marshal the state into JSON
     retVal, err := json.Marshal(rc.GetStatus())
     // FIXME Proper error handling
