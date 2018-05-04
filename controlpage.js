@@ -107,7 +107,7 @@ function get_status() {
         CPVM.ServerStatus(new ServerStatus());
         CPVM.ServerStatus().StateId(0);
         $.each(json['Cams'], function(i,item) {
-            CPVM.ServerStatus().CamList.push(new Camera(this.Id,this.Hardware,"static/captmpv"+i+".jpg#"+new Date().getTime(), false));
+            CPVM.ServerStatus().CamList.push(new Camera(this.Id,this.Hardware,json['WebcamCaptureFilename'][i], false));
         });
         $.each(json['Mics'], function() {
             CPVM.ServerStatus().MicList.push(new Microphone(this.Id,this.Hardware,false));

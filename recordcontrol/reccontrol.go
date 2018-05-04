@@ -11,6 +11,7 @@ import (
     "io/ioutil"
     "math"
     "strings"
+    "time"
 )
 
 // The record control class
@@ -65,6 +66,7 @@ func CreateEmptyStatus() Status {
     state.Disk = Disk{}
     state.LocationOk = false
     state.GStreamerOk = false
+    state.WebcamCaptureFilename = []string{""}
 
     return state
 }
@@ -214,31 +216,44 @@ func (rc *RecordControl) CheckConfig(config RecordConfig) bool {
     return retVal
 }
 
-// Capture single frame of webcam and store in jpg file using fscam
-func (rc RecordControl) CaptureFrame() {
-    for i,_ := range rc.Status.Cams {
+// Capture single frame of webcam and store in jpg file using fswebcam
+// Return string array containing the filenames created
+
+func (rc RecordControl) CaptureFrame() []string {
+    // Delete all webcam captures files
+    captures, err := ioutil.ReadDir("static/captures")
+    if err != nil {
+        //FIXME error handling
+        fmt.Println("Error with file")
+    }
+    for _, file := range captures {
+        if strings.HasPrefix(file.Name(),"captmpv") {
+            os.Remove("static/captures/"+file.Name())
+        }
+    }
+
+    // Capture
+    output := make([]string, len(rc.Status.Cams))
+    for i,cam := range rc.Status.Cams {
         fmt.Println(i)
 
-        // Check for previous capture and delete it
-        //fname := "captmp_v"+string(i)+".jpg"
-        fname := fmt.Sprintf("static/captmpv%d.jpg",i)
-        _,err := os.Stat(fname)
-        if err == nil {
-            fmt.Println("Error during capture:",err)
-        }
 
-        if !os.IsNotExist(err) {
-            os.Remove(fname)
-        }
+        // Generate file name with time
+        t := time.Now()
+        fname := fmt.Sprintf("static/captures/captmpv%d_%s.jpg",i,t.Format("060102_150405"))
+
         // Capture frame 
-        argstr := []string{"--jpeg","80","--save",fname}
+        argstr := []string{"--jpeg","80","--save",fname,"--device",cam.Hardware}
         cmd := exec.Command("fswebcam",argstr...)
         _, err = cmd.Output()
         if err != nil {
             fmt.Println(err)
+            output[i] = ""
         }
         fmt.Println("Captured frame:",fname)
+        output[i] = fname
     }
+    return output
 
 }
 
@@ -258,7 +273,9 @@ func (rc *RecordControl) TaskGetStatus() []byte {
     // Run Preflight to get the current state
     rc.Preflight()
     // Capture still image from all webcams
-    rc.CaptureFrame()
+    var capture_fnames []string
+    capture_fnames = rc.CaptureFrame()
+    rc.Status.WebcamCaptureFilename = capture_fnames
     // Marshal the state into JSON
     retVal, err := json.Marshal(rc.GetStatus())
     // FIXME Proper error handling
@@ -319,6 +336,7 @@ type Status struct {
     Disk Disk
     LocationOk bool
     GStreamerOk bool
+    WebcamCaptureFilename []string
 }
 
 type Hardware struct {
