@@ -4,11 +4,11 @@ Server:
 Recording:
     Cameras:
         - 0
-        - 2
+        - 1
         - 3
     Microphones:
         - 0
         - 1
         - 3
     SID: None
-    RecFolder: /run/media/andrews/iso
+    RecFolder: /andrews/home

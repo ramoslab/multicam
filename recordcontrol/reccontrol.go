@@ -181,6 +181,43 @@ func (rc *RecordControl) CheckGstreamer() bool {
 // Start recording
 func (rc *RecordControl) StartRecording() {
     rc.setState(2)
+    gstcommand := "gst-launch-1.0"
+    argstrs := [][]string{}
+
+    for i,cam := range rc.Status.Cams {
+        argstrs = append(argstrs,[]string{
+            "-e",
+            "mp4mux",
+            "name=filemux",
+            "!",
+            "filesink",
+            fmt.Sprintf("location=%s%d.mp4",rc.Config.RecFolder,i),
+            "v4l2src",
+            fmt.Sprintf("device=%s",cam.Hardware),
+            "!",
+            "video/x-h264,width=1280,height=720,framerate=30/1",
+            "!",
+            "h264parse",
+            "!",
+            "filemux.video_0"})
+    }
+
+    cmd := make([]*exec.Cmd,len(rc.Config.Cameras))
+    for i,_ := range cmd {
+        cmd[i] = exec.Command(gstcommand,argstrs[rc.Config.Cameras[i]]...)
+    }
+
+    done := make(chan int)
+
+    for i,_ := range cmd {
+        cmd[i].Start()
+        go waitwait(cmd[i],i,done)
+    }
+
+    for i := range cmd {
+        fmt.Printf("Process %d is done\n",i)
+    }
+
 }
 
 // Stop recording
@@ -249,12 +286,12 @@ func (rc RecordControl) CaptureFrame() []string {
         if err != nil {
             fmt.Println(err)
             output[i] = ""
+        } else {
+            fmt.Println("Captured frame:",fname)
+            output[i] = fname
         }
-        fmt.Println("Captured frame:",fname)
-        output[i] = fname
     }
     return output
-
 }
 
 // Prepare the recording by checking all prerequisites for the recording
@@ -314,6 +351,12 @@ func (rc *RecordControl) TaskSetConfig(config RecordConfig) []byte {
     return rc.TaskGetConfig()
 }
 
+// Start the recording
+func (rc *RecordControl) TaskStartRecording() []byte {
+    rc.StartRecording()
+    return []byte(`{"Test": "test"}`)
+}
+
 // Function running the preflight to check the hardware status of the system
 // Return the marshalled JSON byte array (including a message to the client)
 
@@ -351,3 +394,13 @@ type Disk struct {
 }
 
 //TODO implement function: Return error
+
+func waitwait(cmd *exec.Cmd,process int,done chan int) {
+    fmt.Printf("Waiting for process %d\n",process)
+    err := cmd.Wait()
+    if err != nil {
+        fmt.Println(err)
+    }
+    fmt.Printf("Process %d died.\n",process)
+    done <- process
+}
