@@ -193,6 +193,24 @@ function start_recording() {
     $.ajax(config).done(done_fct).fail(fail_fct);
 }
 
+function stop_recording() {
+
+    var config = {
+        url: "http://localhost:8040/request",
+        data: JSON.stringify({"Command": "CTL", "Data": {"CmdType": "STOP"}}),
+        type: "POST",
+        contentType: "application/json", // Request
+        dataType: "json" // Response
+    };
+
+    // Response is the current config of the server
+    var done_fct = function(json) {
+        console.log(json);
+    }
+
+    $.ajax(config).done(done_fct).fail(fail_fct);
+}
+
 
 function fail_fct(xhr, status, errorThrown) {
     console.log("Error: " + errorThrown);

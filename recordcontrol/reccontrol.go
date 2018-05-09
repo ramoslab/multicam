@@ -12,6 +12,7 @@ import (
     "math"
     "strings"
     "time"
+    "sync"
 )
 
 // The record control class
@@ -28,8 +29,11 @@ type RecordControl struct {
     //6 is checking if the saving location exists;
     //7 is checking if other gstreamer processes are running 
     State int
-    // The actual state
+    // The actual status of the server
     Status Status
+    // The channels for checking if the recording processes are still running
+    //Mutex for locking when multiple goroutines running recording commands access record control
+    mux sync.Mutex
 }
 
 // Update the state value 
@@ -110,7 +114,8 @@ func (rc *RecordControl) CheckVideoHw() []Hardware {
 
     // Add all available cams to the hardware list
     for i, cam := range cams {
-        hardware[i] = Hardware{Id: i, Hardware: cam}
+        cmd := exec.Command("")
+        hardware[i] = Hardware{Id: i, Recording: false, Hardware: cam, Command: cmd}
     }
 
     //TODO Add all available mics to the hardware list
@@ -121,7 +126,8 @@ func (rc *RecordControl) CheckVideoHw() []Hardware {
 // Check audio hardware
 func (rc *RecordControl) CheckAudioHw() []Hardware {
     rc.setState(4)
-    return []Hardware{Hardware{Id: 0, Hardware: "/dev/mic0"},Hardware{Id: 1, Hardware: "/dev/mic1"}}
+    cmd := exec.Command("")
+    return []Hardware{Hardware{Id: 0, Recording: false, Hardware: "/dev/mic0", Command: cmd},Hardware{Id: 1, Recording: false, Hardware: "/dev/mic1", Command: cmd}}
 }
 
 // Check the disk space of the disk that contains the recording folder
@@ -181,6 +187,8 @@ func (rc *RecordControl) CheckGstreamer() bool {
 // Start recording
 func (rc *RecordControl) StartRecording() {
     rc.setState(2)
+
+    // Generate the gstreamer command for recording the video from the webcams
     gstcommand := "gst-launch-1.0"
     argstrs := [][]string{}
 
@@ -205,24 +213,32 @@ func (rc *RecordControl) StartRecording() {
     cmd := make([]*exec.Cmd,len(rc.Config.Cameras))
     for i,_ := range cmd {
         cmd[i] = exec.Command(gstcommand,argstrs[rc.Config.Cameras[i]]...)
+        //FIXME Den command hier in der Kamera-Struct speichern. Dann können die Prozesse auch wieder korrekt interrupted werden.
     }
-
-    done := make(chan int)
 
     for i,_ := range cmd {
         cmd[i].Start()
-        go waitwait(cmd[i],i,done)
+        go waitwait(cmd[i],rc.Status.Cams[i].Id,rc)
     }
 
-    for i := range cmd {
-        fmt.Printf("Process %d is done\n",i)
-    }
+    //for i := range cmd {
+    //    fmt.Printf("Process %d is done\n",i)
+    //}
 
 }
 
 // Stop recording
 func (rc *RecordControl) StopRecording() {
     rc.setState(0)
+    // Find all cameras that are still recording
+    for _,cam := range rc.Status.Cams {
+        fmt.Println(cam)
+        if cam.Recording {
+            fmt.Println("Stopping process.")
+            cam.Command.Process.Signal(syscall.SIGINT)
+        }
+    }
+
 }
 
 //TODO Does the Status of the system (video and audio hardware and saving location) match the configuration
@@ -313,6 +329,7 @@ func (rc *RecordControl) TaskGetStatus() []byte {
     var capture_fnames []string
     capture_fnames = rc.CaptureFrame()
     rc.Status.WebcamCaptureFilename = capture_fnames
+    // Check if recording is still running
     // Marshal the state into JSON
     retVal, err := json.Marshal(rc.GetStatus())
     // FIXME Proper error handling
@@ -357,6 +374,13 @@ func (rc *RecordControl) TaskStartRecording() []byte {
     return []byte(`{"Test": "test"}`)
 }
 
+//Stop recording
+func (rc *RecordControl) TaskStopRecording() []byte {
+    rc.StopRecording()
+    return []byte(`{"Test": "test"}`)
+}
+
+
 // Function running the preflight to check the hardware status of the system
 // Return the marshalled JSON byte array (including a message to the client)
 
@@ -384,7 +408,9 @@ type Status struct {
 
 type Hardware struct {
     Id int
+    Recording bool
     Hardware string
+    Command *exec.Cmd
 }
 
 type Disk struct {
@@ -395,12 +421,29 @@ type Disk struct {
 
 //TODO implement function: Return error
 
-func waitwait(cmd *exec.Cmd,process int,done chan int) {
-    fmt.Printf("Waiting for process %d\n",process)
+func waitwait(cmd *exec.Cmd, camid int, rc *RecordControl) {
+    fmt.Printf("Waiting for camid %d\n",camid)
+    // Wait for process to die
     err := cmd.Wait()
     if err != nil {
         fmt.Println(err)
     }
-    fmt.Printf("Process %d died.\n",process)
-    done <- process
+    fmt.Printf("Process of camid %d died.\n",camid)
+    // Notify record control that the process has died
+    rc.mux.Lock()
+    defer rc.mux.Unlock()
+    for _,cam := range rc.Status.Cams {
+        if cam.Id == camid {
+            cam.Recording = false
+        }
+    }
+}
+
+func interrupt_process(cmd *exec.Cmd, quit chan bool) {
+    for {
+        select {
+        case quit <- true:
+            cmd.Process.Signal(syscall.SIGINT)
+        }
+    }
 }

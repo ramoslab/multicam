@@ -46,11 +46,10 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
             //TODO This task is only internal. Clients can't execute it.
             //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
         case "StartRecording":
-            cmd.FeedbackChannel <- rc.TaskStartRecording()
-            //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
-        case "StopRecording":
-            //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
             //TODO Check first if possible
+            cmd.FeedbackChannel <- rc.TaskStartRecording()
+        case "StopRecording":
+            cmd.FeedbackChannel <- rc.TaskStopRecording()
         case "Error":
             //TODO run error handling function of task queue
         case "ReturnError":
