@@ -35,23 +35,30 @@
         </div>
         <div class="active_cams">
             <h3>Active cameras</h3>
-            <div class="imagelist_container">
-                <dl class="image" data-bind="foreach: ServerStatus().CamList">
-                    <dt data-bind="if: cfg_record" class="record_from"><img data-bind="attr: {src: cam_image}" /> </dt>
-                    <dt data-bind="ifnot: cfg_record"><img data-bind="attr: {src: cam_image}" /></dt>
-                    <dd><span class="camera_recording" data-bind="if: recording">Recording from&nbsp;</span><span data-bind="text: cam_path"></span></dd>
-                </dl>
-            </div>
+            <ul class="cameras" data-bind="foreach: ServerStatus().CamList">
+                <li>
+                    <div class="line">
+                        <img data-bind="attr: {src: cam_image}" class="camera_image" />
+                        <div class="recording_circle_config" data-bind="visible: cfg_record"></div>
+                        <div class="recording_circle" data-bind="visible: recording"></div>
+                        <span class="camera_recording" data-bind="if: recording">Recording from&nbsp;</span>
+                        <span data-bind="text: cam_path"></span>
+                    </div>
+                </li>
+            </ul>
         </div>
         <div class="active_mics">
             <h3>Active microphones</h3>
-            <div class="imagelist_container">
-                <dl class="image" data-bind="foreach: ServerStatus().MicList">
-                    <dt data-bind="if: cfg_record" class="record_from">IMAGE: Image of microphone</dt>
-                    <dt data-bind="ifnot: cfg_record">IMAGE: Image of microphone</dt> 
-                    <dd>Mic: <span data-bind="text: mic_path"></span></dd>
-                </dl>
-            </div>
+            <ul class="microphones" data-bind="foreach: ServerStatus().MicList">
+                <li>
+                    <div class="line">
+                        <div class="recording_circle_config" data-bind="visible: cfg_record"></div>
+                        <div class="recording_circle" data-bind="visible: recording"></div>
+                        <span class="microphone_recording" data-bind="if: recording">Recording from&nbsp;</span>
+                        <span data-bind="text: mic_path"></span>
+                    </div>
+                </li>
+            </ul>
         </div>
     </div>
     <div class="client_config">

@@ -1,5 +1,5 @@
 .record_from {
-    background-color: #d90;
+    border-left: 10px solid #f60;
 }
 
 .red_notice {
@@ -10,6 +10,29 @@
     background-color: #bfb;
 }
 
+.camera_image {
+    width: 180px;
+
+}
+
 .camera_recording {
     color: #f00;
+}
+
+.recording_circle{
+    width: 10px;
+    height: 10px;
+    -webkit-border-radius: 5px;
+    -moz-border-radius: 5px;
+    border-radius: 5px;
+    background: #f00;
+}
+
+.recording_circle_config{
+    width: 10px;
+    height: 10px;
+    -webkit-border-radius: 5px;
+    -moz-border-radius: 5px;
+    border-radius: 5px;
+    background: #f90;
 }

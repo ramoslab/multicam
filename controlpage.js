@@ -45,6 +45,7 @@ function Microphone(mic_id, mic_path, cfg_record) {
     var self = this;
     self.mic_id = ko.observable(mic_id);
     self.mic_path = ko.observable(mic_path);
+    self.recording = ko.observable(false);
     self.cfg_record = ko.observable(cfg_record);
 }
 
