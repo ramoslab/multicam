@@ -39,17 +39,19 @@ func main() {
         mics[i] = mic.(int)
     }
 
+    // Get configuration for the microphones
+    searchStringAudio := viper.GetString("Hardware.SearchStringAudio")
+
     // Get configuration for the server
     port := viper.GetInt("Server.Port")
     address := viper.GetString("Server.Adress")
-
 
     // Instantiate record control data configuration
     recCfg := recordcontrol.RecordConfig{Cameras: cams, Microphones: mics, Sid: sid, RecFolder: recfolder}
     //DEBUG
     fmt.Println(recCfg)
     // Instantiate record control data model 
-    rec1 := recordcontrol.RecordControl{Config: recCfg}
+    rec1 := recordcontrol.RecordControl{Config: recCfg, SearchStringAudio: searchStringAudio}
     rec1.Preflight()
     fmt.Println(rec1)
     // Instantiate task manager 

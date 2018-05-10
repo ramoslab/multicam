@@ -23,6 +23,7 @@ function ServerStatus() {
 
 
     self.serverstateBg = ko.computed(function() {
+        console.log(self.StateId());
         switch (self.StateId()) {
             case -1: return '#333'; 
             case 0: return '#ccc'; 
@@ -205,7 +206,6 @@ function fail_fct(xhr, status, errorThrown) {
 
 // Sets the config of the server in the view
 function set_client_config(json) {
-    console.log(json);
     // Reset cameras to "not recording"
     $.each(CPVM.ServerStatus().CamList(), function(i,item) {
         item.cfg_record(false);
@@ -233,19 +233,13 @@ function set_client_config(json) {
     CPVM.RecordingConfig().SavingLocation(json['RecFolder']);
     CPVM.ServerStatus().Sid(json['Sid']);
     CPVM.RecordingConfig().Sid(json['Sid']);
-    console.log(json);
 }
 
 // Sets the status of the server in the view
 function set_client_status(json) {
-
-    console.log(json);
-    
-    CPVM.ServerStatus().StateId(json['Stateid']);
     CPVM.ServerStatus(new ServerStatus());
-    CPVM.ServerStatus().StateId(0);
+    CPVM.ServerStatus().StateId(json['Stateid']);
     $.each(json['Cams'], function(i,item) {
-        console.log(item['Recording']);
         CPVM.ServerStatus().CamList.push(new Camera(this.Id,this.Hardware,json['WebcamCaptureFilename'][i], false, item['Recording']));
     });
     $.each(json['Mics'], function() {

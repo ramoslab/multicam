@@ -12,3 +12,5 @@ Recording:
         - 3
     SID: None
     RecFolder: /home/andrews/recordings/
+Hardware:
+    SearchStringAudio: HD_Pro

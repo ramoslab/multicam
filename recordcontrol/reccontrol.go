@@ -30,7 +30,8 @@ type RecordControl struct {
     //7 is checking if other gstreamer processes are running 
     // The actual status of the server (including stateid)
     Status Status
-    // The channels for checking if the recording processes are still running
+    // Configuration items
+    SearchStringAudio string
     //Mutex for locking when multiple goroutines running recording commands access record control
     mux sync.Mutex
 }
@@ -90,18 +91,13 @@ func (rc *RecordControl) CheckVideoHw() []Hardware {
             cams = append(cams, "/dev/"+f.Name())
         }
     }
-    //TODO Retrieve all available microphones
-    var mics []string
-
-    hardware := make([]Hardware,len(cams)+len(mics))
+    hardware := make([]Hardware,len(cams))
 
     // Add all available cams to the hardware list
     for i, cam := range cams {
         cmd := exec.Command("")
         hardware[i] = Hardware{Id: i, Recording: false, Hardware: cam, Command: cmd}
     }
-
-    //TODO Add all available mics to the hardware list
 
     return hardware
 }
@@ -110,8 +106,27 @@ func (rc *RecordControl) CheckVideoHw() []Hardware {
 // Checks audio hardware
 func (rc *RecordControl) CheckAudioHw() []Hardware {
     rc.setState(4)
-    cmd := exec.Command("")
-    return []Hardware{Hardware{Id: 0, Recording: false, Hardware: "/dev/mic0", Command: cmd},Hardware{Id: 1, Recording: false, Hardware: "/dev/mic1", Command: cmd}}
+    var retVal []Hardware
+    fmt.Println("Checking Audio Hardware")
+    // Search for available microphones using search string of config
+    searchCmd := exec.Command("/bin/sh","-c",fmt.Sprintf("pactl list | grep -A2 'Source #' | grep 'Name: ' | cut -d\" \" -f2 | grep %s",rc.SearchStringAudio))
+    out, err := searchCmd.Output()
+    var temp []string
+    if err != nil {
+        fmt.Println("Error:",err)
+        retVal = []Hardware{}
+    } else {
+        temp = strings.Split(strings.TrimSpace(string(out)),"\n")
+        for i,mic := range temp {
+            retVal = append(retVal, Hardware{Id: i, Recording: false, Hardware: mic, Command: exec.Command("")})
+
+        }
+        fmt.Println("Output:",temp)
+    }
+
+
+    //return []Hardware{Hardware{Id: 0, Recording: false, Hardware: "/dev/mic0", Command: cmd},Hardware{Id: 1, Recording: false, Hardware: "/dev/mic1", Command: cmd}}
+    return retVal
 }
 
 // Returns the disk space of the disk that contains the recording folder
@@ -211,7 +226,47 @@ func (rc *RecordControl) StartRecording() {
 
         err := cmd.Start()
         fmt.Println(cmd.Args,err)
-        go waitwait(cmd,camid,rc)
+        go waitCamRecording(cmd,camid,rc)
+    }
+
+    // Generate the gstreamer command for recording the audio from the webcams
+    gstcommand = "gst-launch-1.0"
+    t = time.Now()
+    filename_part = fmt.Sprintf("%s",t.Format("060102_150405"))
+    argstrs = [][]string{}
+
+    // Iterate over available cameras and assign commands
+    for i,mic := range rc.Status.Mics {
+        argstrs = append(argstrs,[]string{
+            "-e",
+            "pulsesrc",
+            fmt.Sprintf("device=%s",mic.Hardware),
+            "!",
+            "audioconvert",
+            "!",
+            "lamemp3enc",
+            "target=1",
+            "bitrate=192",
+            "cbr=true",
+            "!",
+            "filesink",
+            fmt.Sprintf("location=%s%s_%s_v%d.mp3",rc.Config.RecFolder,filename_part,rc.Config.Sid,i),
+            })
+
+        rc.Status.Mics[i].Command = exec.Command(gstcommand,argstrs[i]...)
+    }
+
+    // Start commands
+    for _,micid := range rc.Config.Microphones {
+        index := find_camera(rc, micid)
+        fmt.Printf("Starting recording on microphone: MicId: %d, Index: %d, Hardware: %s\n",micid,index,rc.Status.Mics[index].Hardware)
+
+        cmd := rc.Status.Mics[index].Command
+        rc.Status.Mics[index].Recording = true
+
+        err := cmd.Start()
+        fmt.Println(cmd.Args,err)
+        go waitMicRecording(cmd,micid,rc)
     }
 }
 
@@ -452,7 +507,7 @@ func CreateEmptyConfig() RecordConfig {
 
 // Waits for a process to end
 // Sets the Recording to false in the Hardware item the command corresponds to
-func waitwait(cmd *exec.Cmd, camid int, rc *RecordControl) {
+func waitCamRecording(cmd *exec.Cmd, camid int, rc *RecordControl) {
     fmt.Printf("Waiting for camid %d\n",camid)
     // Wait for process to die
     err := cmd.Wait()
@@ -466,6 +521,26 @@ func waitwait(cmd *exec.Cmd, camid int, rc *RecordControl) {
     for i,cam := range rc.Status.Cams {
         if cam.Id == camid {
             rc.Status.Cams[i].Recording = false
+        }
+    }
+}
+
+// Waits for a process to end
+// Sets the Recording to false in the Hardware item the command corresponds to
+func waitMicRecording(cmd *exec.Cmd, micid int, rc *RecordControl) {
+    fmt.Printf("Waiting for micid %d\n",micid)
+    // Wait for process to die
+    err := cmd.Wait()
+    if err != nil {
+        fmt.Println(err)
+    }
+    fmt.Printf("Process of micid %d died.\n",micid)
+    // Notify record control that the process has died
+    rc.mux.Lock()
+    defer rc.mux.Unlock()
+    for i,mic := range rc.Status.Mics {
+        if mic.Id == micid {
+            rc.Status.Mics[i].Recording = false
         }
     }
 }
