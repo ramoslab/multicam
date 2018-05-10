@@ -41,12 +41,7 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
 
             recConfig := recordcontrol.RecordConfig{Cameras: cams, Microphones: mics, Sid: data["Sid"].(string), RecFolder: data["RecFolder"].(string)}
             cmd.FeedbackChannel <- rc.TaskSetConfig(recConfig)
-        case "Preflight":
-            //cmd.FeedbackChannel <- rc.TaskPreflight()
-            //TODO This task is only internal. Clients can't execute it.
-            //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
         case "StartRecording":
-            //TODO Check first if possible
             cmd.FeedbackChannel <- rc.TaskStartRecording()
         case "StopRecording":
             cmd.FeedbackChannel <- rc.TaskStopRecording()

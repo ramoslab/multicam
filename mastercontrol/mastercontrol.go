@@ -49,7 +49,7 @@ func main() {
     //DEBUG
     fmt.Println(recCfg)
     // Instantiate record control data model 
-    rec1 := recordcontrol.RecordControl{State: 0, Config: recCfg}
+    rec1 := recordcontrol.RecordControl{Config: recCfg}
     rec1.Preflight()
     fmt.Println(rec1)
     // Instantiate task manager 

@@ -28,67 +28,50 @@ type RecordControl struct {
     //5 is checking disk space;
     //6 is checking if the saving location exists;
     //7 is checking if other gstreamer processes are running 
-    State int
-    // The actual status of the server
+    // The actual status of the server (including stateid)
     Status Status
     // The channels for checking if the recording processes are still running
     //Mutex for locking when multiple goroutines running recording commands access record control
     mux sync.Mutex
 }
 
-// Update the state value 
+// Setters
+
+// Updates the state value 
 func (rc *RecordControl) setState(newstate int) {
-    rc.State = newstate
+    rc.Status.Stateid = newstate
+    fmt.Println("State: ",newstate)
 }
 
-// Return the state value
-func (rc *RecordControl) GetStateId() int {
-    return rc.State
-}
-
-// Return the status struct
-func (rc *RecordControl) GetStatus() Status {
-    return rc.Status
-}
-
-// Return the config struct
-func (rc *RecordControl) GetConfig() RecordConfig {
-    return rc.Config
-}
-
-// Set a new configuration
+// Sets a new configuration
 func (rc *RecordControl) SetConfig(config RecordConfig) {
     rc.Config = config
     fmt.Println("Setting config as:",config)
 }
 
-// Create an empty state
-func CreateEmptyStatus() Status {
-    var state Status
-    state.Cams = []Hardware{}
-    state.Mics = []Hardware{}
-    state.Disk = Disk{}
-    state.LocationOk = false
-    state.GStreamerOk = false
-    state.WebcamCaptureFilename = []string{""}
+// Getters
 
-    return state
+// Returns the state value
+func (rc *RecordControl) GetStateId() int {
+    return rc.Status.Stateid
 }
 
-// Create an empty state
-func CreateEmptyConfig() RecordConfig {
-    var config RecordConfig
-    config.Cameras = []int{}
-    config.Microphones = []int{}
-    config.Sid = ""
-    config.RecFolder = ""
-
-    return config
+// Returns the status struct
+func (rc *RecordControl) GetStatus() Status {
+    return rc.Status
 }
+
+// Returns the config struct
+func (rc *RecordControl) GetConfig() RecordConfig {
+    return rc.Config
+}
+
+
 
 // Checking (preflight)
 
-// Get cameras available
+// Gets all available cameras
+// Returns an array of Hardware
 func (rc *RecordControl) CheckVideoHw() []Hardware {
     rc.setState(3)
     files, err := ioutil.ReadDir("/dev/")
@@ -123,14 +106,15 @@ func (rc *RecordControl) CheckVideoHw() []Hardware {
     return hardware
 }
 
-// Check audio hardware
+//TODO Not yet implemented
+// Checks audio hardware
 func (rc *RecordControl) CheckAudioHw() []Hardware {
     rc.setState(4)
     cmd := exec.Command("")
     return []Hardware{Hardware{Id: 0, Recording: false, Hardware: "/dev/mic0", Command: cmd},Hardware{Id: 1, Recording: false, Hardware: "/dev/mic1", Command: cmd}}
 }
 
-// Check the disk space of the disk that contains the recording folder
+// Returns the disk space of the disk that contains the recording folder
 func (rc *RecordControl) CheckDiskspace() Disk {
     rc.setState(5)
     var stat syscall.Statfs_t
@@ -141,7 +125,10 @@ func (rc *RecordControl) CheckDiskspace() Disk {
                 SpaceTotal: stat.Blocks * uint64(stat.Bsize) / uint64(math.Pow(1024,3))}
 }
 
-// Check the saving location
+// Checks the saving location
+// If the saving location does not exists, it will be created
+// If the saving location can neither be accessed nor created false is returned
+// Returns true if the saving location exists
 func (rc *RecordControl) CheckSavingLocation() bool {
     rc.setState(6)
     var retVal bool
@@ -165,6 +152,7 @@ func (rc *RecordControl) CheckSavingLocation() bool {
     return retVal
 }
 
+//FIXME Necessary? If so, implement correctly
 // Check if other gstreamer processes are running
 func (rc *RecordControl) CheckGstreamer() bool {
 
@@ -181,8 +169,6 @@ func (rc *RecordControl) CheckGstreamer() bool {
 
     return true
 }
-
-// Recording (flight)
 
 // Start recording
 func (rc *RecordControl) StartRecording() {
@@ -202,7 +188,7 @@ func (rc *RecordControl) StartRecording() {
             "name=filemux",
             "!",
             "filesink",
-            fmt.Sprintf("location=%s%s_%d.mp4",rc.Config.RecFolder,filename_part,i),
+            fmt.Sprintf("location=%s%s_%s_v%d.mp4",rc.Config.RecFolder,filename_part,rc.Config.Sid,i),
             "v4l2src",
             fmt.Sprintf("device=%s",cam.Hardware),
             "!",
@@ -215,7 +201,7 @@ func (rc *RecordControl) StartRecording() {
         rc.Status.Cams[i].Command = exec.Command(gstcommand,argstrs[i]...)
     }
 
-    // Commands starten
+    // Start commands
     for _,camid := range rc.Config.Cameras {
         index := find_camera(rc, camid)
         fmt.Printf("Starting recording on camera: CamId: %d, Index: %d, Hardware: %s\n",camid,index,rc.Status.Cams[index].Hardware)
@@ -244,9 +230,6 @@ func (rc *RecordControl) StopRecording() {
     }
 }
 
-//TODO Does the Status of the system (video and audio hardware and saving location) match the configuration
-//FIXME Oder soll das lieber oben einzeln geprüft werden?
-//TODO Funktion, die eine gegebene Config mit dem Status testet
 // Checks if the given configuration matches the current status
 func (rc *RecordControl) CheckConfig(config RecordConfig) bool {
     var retVal bool
@@ -272,8 +255,8 @@ func (rc *RecordControl) CheckConfig(config RecordConfig) bool {
     return retVal
 }
 
-// Capture single frame of webcam and store in jpg file using fswebcam
-// Return string array containing the filenames created
+// Captures a single frame of all available webcams and stores them in a jpg file using fswebcam
+// Returns string array containing the filenames created
 
 func (rc RecordControl) CaptureFrame() []string {
     // Delete all webcam captures files
@@ -313,7 +296,7 @@ func (rc RecordControl) CaptureFrame() []string {
     return output
 }
 
-// Prepare the recording by checking all prerequisites for the recording
+// Prepares the recording by checking all prerequisites for the recording
 func (rc *RecordControl) Preflight() {
     rc.Status.Cams = rc.CheckVideoHw()
     rc.Status.Mics = rc.CheckAudioHw()
@@ -323,17 +306,21 @@ func (rc *RecordControl) Preflight() {
     rc.setState(0)
 }
 
-// Function generating the STATE response for the client
+// The tasks
+
+// Generate the STATUS response for the client
 // Returns the marshalled JSON byte array of the state struct
 func (rc *RecordControl) TaskGetStatus() []byte {
-    // Run Preflight to get the current state
-    rc.Preflight()
-    // Capture still image from all webcams
-    var capture_fnames []string
-    capture_fnames = rc.CaptureFrame()
-    rc.Status.WebcamCaptureFilename = capture_fnames
-    // Check if recording is still running
-    // Marshal the state into JSON
+    // Check if server is idle
+    if rc.GetStateId() <= 1 {
+        // Run Preflight to get the current status
+        rc.Preflight()
+        // Capture still image from all webcams
+        var capture_fnames []string
+        capture_fnames = rc.CaptureFrame()
+        rc.Status.WebcamCaptureFilename = capture_fnames
+    }
+    // Marshal the current status into JSON
     retVal, err := json.Marshal(rc.GetStatus())
     // FIXME Proper error handling
     if err != nil {
@@ -345,14 +332,13 @@ func (rc *RecordControl) TaskGetStatus() []byte {
     return retVal
 }
 
-// Function generating the CONFIG response for the client
+// Generates the CONFIG response for the client
 // Returns the marshalled JSON byte array of the config struct
 func (rc *RecordControl) TaskGetConfig() []byte {
     // Marshal the config into JSON
     retVal, err := json.Marshal(rc.GetConfig())
-    // FIXME Proper error handling
-    if err != nil {
-        fmt.Println("Error marshalling config", err)
+    // FIXME Proper error handling 
+    if err != nil { fmt.Println("Error marshalling config", err)
         // If marshalling fails, return empty state
         emptyConfig := CreateEmptyConfig()
         retVal, _ = json.Marshal(emptyConfig)
@@ -360,32 +346,41 @@ func (rc *RecordControl) TaskGetConfig() []byte {
     return retVal
 }
 
-// Set the config given by the client
-// Generate the SETCONFIG response for the client
-//func (rc *RecordControl) TaskSetConfig(config RecordConfig) []byte {
+// Sets The configuration given by the client
+// In case the server is idle the new config is set and checked and the new config is returned to the client
+// The case the server is not idle the previous config is returned to the client
 func (rc *RecordControl) TaskSetConfig(config RecordConfig) []byte {
-    fmt.Println("Setting new config.")
-    rc.SetConfig(config)
-    fmt.Println("Checking new config.")
-    rc.CheckConfig(config)
+    // Check if server is IDLE
+    if rc.GetStateId() <= 1 {
+        fmt.Println("Setting new config.")
+        rc.SetConfig(config)
+        fmt.Println("Checking new config.")
+        rc.CheckConfig(config)
+    }
+    //TODO Log new config not accepted because server is not idle
+    // If not idle send previous config
     return rc.TaskGetConfig()
 }
 
-// Start the recording
+// Starts the recording if the server is idle
+// Sends the current status of the server as reply to the client
 func (rc *RecordControl) TaskStartRecording() []byte {
-    rc.StartRecording()
-    return []byte(`{"Test": "test"}`)
+    if rc.GetStateId() <= 1 {
+        rc.StartRecording()
+    }
+    return rc.TaskGetStatus()
 }
 
-//Stop recording
+// Stops the recording if the server is recording
+// Sends the current status of the server as reply to the client
 func (rc *RecordControl) TaskStopRecording() []byte {
-    rc.StopRecording()
-    return []byte(`{"Test": "test"}`)
+    if rc.GetStateId() == 2 {
+        rc.StopRecording()
+    }
+    return rc.TaskGetStatus()
 }
 
-
-// Function running the preflight to check the hardware status of the system
-// Return the marshalled JSON byte array (including a message to the client)
+// Structure definitions
 
 // The configuration for the recording
 type RecordConfig struct {
@@ -407,6 +402,7 @@ type Status struct {
     LocationOk bool
     GStreamerOk bool
     WebcamCaptureFilename []string
+    Stateid int
 }
 
 type Hardware struct {
@@ -424,6 +420,35 @@ type Disk struct {
 
 //TODO implement function: Return error
 
+// Helper functions
+
+// Creates an empty status
+func CreateEmptyStatus() Status {
+    var state Status
+    state.Cams = []Hardware{}
+    state.Mics = []Hardware{}
+    state.Disk = Disk{}
+    state.LocationOk = false
+    state.GStreamerOk = false
+    state.WebcamCaptureFilename = []string{""}
+    state.Stateid = -1
+
+    return state
+}
+
+// Creates an empty config
+func CreateEmptyConfig() RecordConfig {
+    var config RecordConfig
+    config.Cameras = []int{}
+    config.Microphones = []int{}
+    config.Sid = ""
+    config.RecFolder = ""
+
+    return config
+}
+
+// Waits for a process to end
+// Sets the Recording to false in the Hardware item the command corresponds to
 func waitwait(cmd *exec.Cmd, camid int, rc *RecordControl) {
     fmt.Printf("Waiting for camid %d\n",camid)
     // Wait for process to die
@@ -442,8 +467,8 @@ func waitwait(cmd *exec.Cmd, camid int, rc *RecordControl) {
     }
 }
 
-// Find camera with given Id in the status of recording control
-// Return index of camera in status
+// Finds camera with given Id in the status of recording control
+// Returns index of this camera
 func find_camera(rc *RecordControl, camid int) int {
     retval := -1
     for i,cam := range rc.Status.Cams {
