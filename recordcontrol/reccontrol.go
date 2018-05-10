@@ -190,8 +190,11 @@ func (rc *RecordControl) StartRecording() {
 
     // Generate the gstreamer command for recording the video from the webcams
     gstcommand := "gst-launch-1.0"
+    t := time.Now()
+    filename_part := fmt.Sprintf("%s",t.Format("060102_150405"))
     argstrs := [][]string{}
 
+    // Iterate over available cameras and assign commands
     for i,cam := range rc.Status.Cams {
         argstrs = append(argstrs,[]string{
             "-e",
@@ -199,7 +202,7 @@ func (rc *RecordControl) StartRecording() {
             "name=filemux",
             "!",
             "filesink",
-            fmt.Sprintf("location=%s%d.mp4",rc.Config.RecFolder,i),
+            fmt.Sprintf("location=%s%s_%d.mp4",rc.Config.RecFolder,filename_part,i),
             "v4l2src",
             fmt.Sprintf("device=%s",cam.Hardware),
             "!",
@@ -208,37 +211,37 @@ func (rc *RecordControl) StartRecording() {
             "h264parse",
             "!",
             "filemux.video_0"})
+
+        rc.Status.Cams[i].Command = exec.Command(gstcommand,argstrs[i]...)
     }
 
-    cmd := make([]*exec.Cmd,len(rc.Config.Cameras))
-    for i,_ := range cmd {
-        cmd[i] = exec.Command(gstcommand,argstrs[rc.Config.Cameras[i]]...)
-        //FIXME Den command hier in der Kamera-Struct speichern. Dann können die Prozesse auch wieder korrekt interrupted werden.
+    // Commands starten
+    for _,camid := range rc.Config.Cameras {
+        index := find_camera(rc, camid)
+        fmt.Printf("Starting recording on camera: CamId: %d, Index: %d, Hardware: %s\n",camid,index,rc.Status.Cams[index].Hardware)
+
+        cmd := rc.Status.Cams[index].Command
+        rc.Status.Cams[index].Recording = true
+
+        err := cmd.Start()
+        fmt.Println(cmd.Args,err)
+        go waitwait(cmd,camid,rc)
     }
-
-    for i,_ := range cmd {
-        cmd[i].Start()
-        go waitwait(cmd[i],rc.Status.Cams[i].Id,rc)
-    }
-
-    //for i := range cmd {
-    //    fmt.Printf("Process %d is done\n",i)
-    //}
-
 }
 
 // Stop recording
 func (rc *RecordControl) StopRecording() {
     rc.setState(0)
     // Find all cameras that are still recording
-    for _,cam := range rc.Status.Cams {
+    for i,cam := range rc.Status.Cams {
         fmt.Println(cam)
         if cam.Recording {
-            fmt.Println("Stopping process.")
-            cam.Command.Process.Signal(syscall.SIGINT)
+            fmt.Printf("Stopping process of camera %s\n", cam.Hardware)
+            fmt.Println(cam.Command.Args)
+            err := rc.Status.Cams[i].Command.Process.Signal(syscall.SIGINT)
+            fmt.Println(err)
         }
     }
-
 }
 
 //TODO Does the Status of the system (video and audio hardware and saving location) match the configuration
@@ -432,18 +435,21 @@ func waitwait(cmd *exec.Cmd, camid int, rc *RecordControl) {
     // Notify record control that the process has died
     rc.mux.Lock()
     defer rc.mux.Unlock()
-    for _,cam := range rc.Status.Cams {
+    for i,cam := range rc.Status.Cams {
         if cam.Id == camid {
-            cam.Recording = false
+            rc.Status.Cams[i].Recording = false
         }
     }
 }
 
-func interrupt_process(cmd *exec.Cmd, quit chan bool) {
-    for {
-        select {
-        case quit <- true:
-            cmd.Process.Signal(syscall.SIGINT)
+// Find camera with given Id in the status of recording control
+// Return index of camera in status
+func find_camera(rc *RecordControl, camid int) int {
+    retval := -1
+    for i,cam := range rc.Status.Cams {
+        if camid == cam.Id {
+            retval = i
         }
     }
+    return retval
 }

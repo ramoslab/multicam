@@ -245,7 +245,9 @@ function set_client_config(json) {
     });
     
     CPVM.ServerStatus().SavingLocation(json['RecFolder']);
+    CPVM.RecordingConfig().SavingLocation(json['RecFolder']);
     CPVM.ServerStatus().Sid(json['Sid']);
+    CPVM.RecordingConfig().Sid(json['Sid']);
     console.log(json);
 }
 
