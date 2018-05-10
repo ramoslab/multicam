@@ -22,26 +22,22 @@ function ServerStatus() {
 
 
 
-    //self.serverstateBg = ko.computed(function() {
-    //    switch (self.ServerStatus().StateId()) {
-    //        case "-1": return '#333'; 
-    //        case "0": return '#ccc'; 
-    //        case "1": return '#8f9'; 
-    //        case "2": return '#fe8'; 
-    //    }
-    //});
-
     self.serverstateBg = ko.computed(function() {
-        return '#ccc';
-        });
-    
+        switch (self.StateId()) {
+            case -1: return '#333'; 
+            case 0: return '#ccc'; 
+            case 1: return '#8f9'; 
+            case 2: return '#fe8'; 
+        }
+    });
 }
 
-function Camera(cam_id, cam_path, cam_image, cfg_record) {
+function Camera(cam_id, cam_path, cam_image, cfg_record, recording) {
     var self = this;
     self.cam_id = ko.observable(cam_id);
     self.cam_path = ko.observable(cam_path);
     self.cam_image = ko.observable(cam_image);
+    self.recording = ko.observable(recording);
     self.cfg_record = ko.observable(cfg_record);
 }
 
@@ -92,6 +88,7 @@ function findMic(serverState,mic_id) {
 // Request and control functions via the http side of the server
 
 // Get state of the server
+// Handle response depending on the state of the server
 function get_status() {
 
     var config = {
@@ -103,20 +100,7 @@ function get_status() {
     };
 
     var done_fct = function(json) {
-
-        CPVM.ServerStatus(new ServerStatus());
-        CPVM.ServerStatus().StateId(0);
-        $.each(json['Cams'], function(i,item) {
-            CPVM.ServerStatus().CamList.push(new Camera(this.Id,this.Hardware,json['WebcamCaptureFilename'][i], false));
-        });
-        $.each(json['Mics'], function() {
-            CPVM.ServerStatus().MicList.push(new Microphone(this.Id,this.Hardware,false));
-        });
-        
-        CPVM.ServerStatus().Disk(new Disk(json['Disk']['SpaceAvailable'], json['Disk']['SpaceTotal']));
-        CPVM.ServerStatus().SavingLocationOk(json['LocationOk']);
-        CPVM.ServerStatus().GStreamerOk(json['GStreamerOk']);
-        console.log(json);
+        set_client_status(json);
     }
 
     $.ajax(config).done(done_fct).fail(fail_fct);
@@ -187,7 +171,7 @@ function start_recording() {
 
     // Response is the current config of the server
     var done_fct = function(json) {
-        console.log(json);
+        set_client_status(json);
     }
 
     $.ajax(config).done(done_fct).fail(fail_fct);
@@ -205,7 +189,7 @@ function stop_recording() {
 
     // Response is the current config of the server
     var done_fct = function(json) {
-        console.log(json);
+        set_client_status(json);
     }
 
     $.ajax(config).done(done_fct).fail(fail_fct);
@@ -218,7 +202,7 @@ function fail_fct(xhr, status, errorThrown) {
     console.log(xhr);
 }
 
-// Set the config of the client in the UI
+// Sets the config of the server in the view
 function set_client_config(json) {
     console.log(json);
     // Reset cameras to "not recording"
@@ -249,6 +233,27 @@ function set_client_config(json) {
     CPVM.ServerStatus().Sid(json['Sid']);
     CPVM.RecordingConfig().Sid(json['Sid']);
     console.log(json);
+}
+
+// Sets the status of the server in the view
+function set_client_status(json) {
+
+    console.log(json);
+    
+    CPVM.ServerStatus().StateId(json['Stateid']);
+    CPVM.ServerStatus(new ServerStatus());
+    CPVM.ServerStatus().StateId(0);
+    $.each(json['Cams'], function(i,item) {
+        console.log(item['Recording']);
+        CPVM.ServerStatus().CamList.push(new Camera(this.Id,this.Hardware,json['WebcamCaptureFilename'][i], false, item['Recording']));
+    });
+    $.each(json['Mics'], function() {
+        CPVM.ServerStatus().MicList.push(new Microphone(this.Id,this.Hardware,false));
+    });
+    
+    CPVM.ServerStatus().Disk(new Disk(json['Disk']['SpaceAvailable'], json['Disk']['SpaceTotal']));
+    CPVM.ServerStatus().SavingLocationOk(json['LocationOk']);
+    CPVM.ServerStatus().GStreamerOk(json['GStreamerOk']);
 }
 
 

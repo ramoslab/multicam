@@ -37,9 +37,9 @@
             <h3>Active cameras</h3>
             <div class="imagelist_container">
                 <dl class="image" data-bind="foreach: ServerStatus().CamList">
-                    <dt data-bind="if: cfg_record" class="record_from"><img data-bind="attr: {src: cam_image}" /></dt>
+                    <dt data-bind="if: cfg_record" class="record_from"><img data-bind="attr: {src: cam_image}" /> </dt>
                     <dt data-bind="ifnot: cfg_record"><img data-bind="attr: {src: cam_image}" /></dt>
-                    <dd>Cam: <span data-bind="text: cam_path"></span></dd>
+                    <dd><span class="camera_recording" data-bind="if: recording">Recording from&nbsp;</span><span data-bind="text: cam_path"></span></dd>
                 </dl>
             </div>
         </div>

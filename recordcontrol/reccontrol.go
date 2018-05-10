@@ -377,6 +377,9 @@ func (rc *RecordControl) TaskStopRecording() []byte {
     if rc.GetStateId() == 2 {
         rc.StopRecording()
     }
+    // Sleep 500ms before returning the status because otherwise the webcams from which video was recorded are not ready to capture the preview frame
+    duration := time.Duration(500)*time.Millisecond
+    time.Sleep(duration)
     return rc.TaskGetStatus()
 }
 
