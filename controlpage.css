@@ -19,6 +19,10 @@
     color: #f00;
 }
 
+.microphone_recording {
+    color: #f00;
+}
+
 .recording_circle{
     width: 10px;
     height: 10px;

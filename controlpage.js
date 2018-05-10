@@ -42,11 +42,11 @@ function Camera(cam_id, cam_path, cam_image, cfg_record, recording) {
     self.cfg_record = ko.observable(cfg_record);
 }
 
-function Microphone(mic_id, mic_path, cfg_record) {
+function Microphone(mic_id, mic_path, cfg_record, recording) {
     var self = this;
     self.mic_id = ko.observable(mic_id);
     self.mic_path = ko.observable(mic_path);
-    self.recording = ko.observable(false);
+    self.recording = ko.observable(recording);
     self.cfg_record = ko.observable(cfg_record);
 }
 
@@ -242,8 +242,8 @@ function set_client_status(json) {
     $.each(json['Cams'], function(i,item) {
         CPVM.ServerStatus().CamList.push(new Camera(this.Id,this.Hardware,json['WebcamCaptureFilename'][i], false, item['Recording']));
     });
-    $.each(json['Mics'], function() {
-        CPVM.ServerStatus().MicList.push(new Microphone(this.Id,this.Hardware,false));
+    $.each(json['Mics'], function(i,item) {
+        CPVM.ServerStatus().MicList.push(new Microphone(this.Id,this.Hardware,false, item['Recording']));
     });
     
     CPVM.ServerStatus().Disk(new Disk(json['Disk']['SpaceAvailable'], json['Disk']['SpaceTotal']));
