@@ -10,9 +10,30 @@ import (
     "net/http"
     "github.com/rs/cors"
     "github.com/spf13/viper"
+    "log"
+    "os"
 )
 
 func main() {
+    // Set up log
+    f, err := os.OpenFile("multicam.log",os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    defer f.Close()
+
+    log.SetOutput(f)
+    log.SetFlags(log.Ldate|log.Ltime|log.Lshortfile)
+
+    log.Print("INFO: Reading config.")
+
+    //logInfo := log.New(f, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+    //logError := log.New(f, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+    //logFatal := log.New(f, "FATAL: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+    //logInfo.Print("Started server.")
     // Start up Server
 
     // Read configuration
@@ -20,9 +41,9 @@ func main() {
     viper.AddConfigPath(".")
 
     //DEBUG
-    err := viper.ReadInConfig()
+    err = viper.ReadInConfig()
     if err != nil {
-        panic(fmt.Errorf("Problem reading config:",err))
+        log.Fatalf("Problem reading config: %s",err)
     }
 
     // Get configuration for the recording
@@ -31,12 +52,24 @@ func main() {
     cams_cfg := viper.Get("Recording.Cameras").([]interface{})
     cams := make([]int, len(cams_cfg))
     for i,cam := range cams_cfg {
-        cams[i] = cam.(int)
+        var ok bool
+        cams[i], ok = cam.(int)
+
+        if !ok {
+            log.Print("ERROR: Type assertion failed during parsing of configuration.")
+        }
     }
+
     mics_cfg := viper.Get("Recording.Microphones").([]interface{})
     mics := make([]int, len(mics_cfg))
     for i,mic := range mics_cfg {
-        mics[i] = mic.(int)
+        var ok bool
+        mics[i], ok = mic.(int)
+
+        if !ok {
+            log.Print("ERROR: Type assertion failed during parsing of configuration.")
+        }
+
     }
 
     // Get configuration for the microphones
@@ -46,26 +79,22 @@ func main() {
     port := viper.GetInt("Server.Port")
     address := viper.GetString("Server.Adress")
 
+    log.Print("INFO: Starting server.")
+
     // Instantiate record control data configuration
     recCfg := recordcontrol.RecordConfig{Cameras: cams, Microphones: mics, Sid: sid, RecFolder: recfolder}
-    //DEBUG
-    fmt.Println(recCfg)
     // Instantiate record control data model 
     rec1 := recordcontrol.RecordControl{Config: recCfg, SearchStringAudio: searchStringAudio}
     rec1.Preflight()
-    fmt.Println(rec1)
     // Instantiate task manager 
     tq1 := taskqueue.TaskQueue{Queue: make(chan taskqueue.Task)}
-    //FIXME Immediately writing something on the task queue. If you do not do that the first command goes missing.
-    //gtq1.Queue <- "Nada."
 
     // Instantiate the UDP Server
     serveUdp_addr := net.UDPAddr{Port: port, IP: net.ParseIP(address)}
     serveUdp_conn, err := net.ListenUDP("udp",&serveUdp_addr)
 
     if err != nil {
-        panic(err)
-        //FIXME Proper error handling
+        log.Fatal("FATAL: Could not create UDP server",err)
     }
 
     udpFeedback := make(chan []byte)
@@ -95,18 +124,12 @@ func main() {
 
     handler := co.Handler(mux)
 
-    //DEBUG
-    fmt.Println("Current state: ",rec1.GetStatus())
-
     // Start the routine that listens over UDP
     go serveUdp.Run(qudp)
     // Start the routine that serves HTTP
     go http.ListenAndServe(":8040", handler)
     // Start the task management routine
     tq1.ExecuteTask(&rec1)
-
-    //DEBUG
-    fmt.Println("Current state: ",rec1.GetStatus())
 }
 
 //TODO It remains an open question if the stopAndExit procedure should remain here or go to the TaskQueue

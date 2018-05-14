@@ -5,6 +5,7 @@ package lns
 import (
     "net"
     "fmt"
+    "log"
     "net/http"
     "encoding/json"
     "io/ioutil"
@@ -32,33 +33,28 @@ func (rudps RecUdpServer) Run(q chan bool) {
     for {
         select {
             case <- q:
-                fmt.Println("Stopping UDP listener.")
+                log.Printf("INFO: Stopping UDP listener.")
             default:
                 // Get number of bytes on the buffer and client address
-                //n, addr, err := rudps.Conn.ReadFromUDP(buf)
                 n, _, errUdp := rudps.Conn.ReadFromUDP(buf)
 
-                //FIXME Error handling
                 if errUdp != nil {
-                    fmt.Println("Error: ", errUdp)
+                    log.Printf("ERROR: Could not read from UDP buffer", errUdp)
                 }
 
                 // Unmarshal what is on the buffer
                 var creq map[string]interface{}
                 errJson := json.Unmarshal(buf[0:n], &creq)
 
-                //FIXME Error handling
                 if errJson != nil {
-                    fmt.Println("Error: ", errJson)
+                    log.Printf("ERROR: Could not unmarshal udp pacakge to json; Message: %s", errJson)
                 }
 
                 // Parse command and put it on the task queue
                 com := parseUdpCommand(creq, rudps.UdpFeedback)
                 rudps.Tq.Queue <- com
 
-                //DEBUG
-                fmt.Println("Received ", string(buf[0:n]))
-                //rudps.Conn.WriteToUDP([]byte("Great"), rudps.Addr)
+                log.Printf("INFO: Received %s", string(buf[0:n]))
 
                 // Send response to client
                 //NOTE The response should usually go unheard because if the package gets lost the client will likely block while waiting for the package to arrive
@@ -153,6 +149,7 @@ func loadPage() (*Page, error) {
 func PageHandler(w http.ResponseWriter, r *http.Request) {
     p, err := loadPage()
     if err != nil {
+        log.Print("ERROR: Error loading static page; Message: %s",err)
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
@@ -175,8 +172,7 @@ type clientRequest struct {
 
 // Handle Ajax requests to the /request page
 func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Request) {
-    //Debug
-    fmt.Println("Request received.")
+    log.Printf("INFO: Request received.")
 
     // Decode request from client
     decoder := json.NewDecoder(r.Body)
@@ -186,7 +182,7 @@ func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Reque
     err := decoder.Decode(&creq)
 
     if err != nil {
-        fmt.Println(err)
+        log.Printf("ERROR: Error decoding json; Message: %s",err)
     }
 
     // Parse command and put it on the task queue
@@ -198,7 +194,6 @@ func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Reque
     //TODO Timeout for HTTP respones if nothing is on the channel after a while (e.g. if parsing the command fails or so)
     w.Header().Set("Content-Type", "application/json")
     w.Write(feedback)
-
 }
 
 // Parse commands received via HTTP
@@ -210,53 +205,51 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
         // Type assertion for Data as map
         creqData, ok := creq["Data"].(map[string]interface{})
         if !ok {
-            //FIXME Error handling
-            fmt.Println("Error running type assertion.")
+            log.Print("WARNING: Error running type assertion (REQ).")
+            return retVal
         }
         switch creqData["CmdType"] {
         case "GETSTATUS":
             retVal = taskqueue.Task{Command: "GetStatus", Data: nil, FeedbackChannel: httpFeedback}
         case "GETCONFIG":
-            //var data taskqueue.ConfigStruct
-            //if err := json.Unmarshal(creq.Data[1], &data); err != nil {
-            //    fmt.Println(err)
-            //    //FIXME Proper error handling
-            //    retVal = taskqueue.Task{Command: "ReturnError", Data: err, FeedbackChannel: httpFeedback}
-            //}
             retVal = taskqueue.Task{Command: "GetConfig", Data: nil, FeedbackChannel: httpFeedback}
         default:
-            //FIXME Proper error handling (using error type)
+            log.Print("WARNING: Command not understood (REQ).")
+            //FIXME Proper error handling (using http?! error type)
                 retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
         }
     case "POST":
         // Type assertion for Data as map
         creqData, ok := creq["Data"].(map[string]interface{})
         if !ok {
-            //FIXME Error handling
-            fmt.Println("Error running type assertion.")
+            log.Print("WARNING: Error running type assertion (POST).")
+            return retVal
         }
+
         switch creqData["CmdType"] {
             case "SETCONFIG":
                 payload, ok := creqData["Values"].(map[string]interface{})
-                fmt.Println(payload["Cameras"])
-                if ok {
-                    fmt.Println(payload)
-                } else {
-                    fmt.Println("CONFIG not ok")
+                if !ok {
+                    log.Printf("WARNING: Error running type assertion (POST:SETCONFIG).")
+                    return retVal
                 }
                 retVal = taskqueue.Task{Command: "SetConfig", Data: payload, FeedbackChannel: httpFeedback}
-                //FIXME Enter proper command here
+            default:
+                log.Print("WARNING: Command not understood (POST).")
+                retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
+
         }
 
     case "CTL":
         creqData, ok := creq["Data"].(map[string]interface{})
         if !ok {
             //FIXME Error handling
-            fmt.Println("Error running type assertion.")
+            log.Printf("ERROR: Error running type assertion (CTL).")
+            return retVal
         }
         switch creqData["CmdType"] {
-            //TODO
             case "PREPARE":
+            //TODO Is it necessary?
                 retVal = taskqueue.Task{Command: "Preflight", Data: nil, FeedbackChannel: httpFeedback}
             case "START":
                 retVal = taskqueue.Task{Command: "StartRecording", Data: nil, FeedbackChannel: httpFeedback}
@@ -267,17 +260,6 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
     }
     return retVal
 }
-
-// The implementation of "RespondMessage" of the Command interface for HTTP
-//TODO Remove this
-//func (cmd HttpCommand) RespondMessage(msg taskqueue.Message) {
-//    // Marshal message into byte array
-//    res, _ := json.Marshal(msg)
-//    // Write response string to the channel
-//    cmd.HttpFeedback <- res
-//    //TODO Make response structs
-//    fmt.Println(res)
-//}
 
 // A message received from the client
 type ClientMessage struct {
@@ -294,6 +276,3 @@ type DataRequest struct {
 type DataControl struct {
     CmdType string
 }
-
-// Data containing configuration
-

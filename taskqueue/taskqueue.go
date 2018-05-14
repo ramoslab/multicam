@@ -3,8 +3,7 @@ package taskqueue
 
 import (
     "bitbucket.com/andrews2000/multicam/recordcontrol"
-    "fmt"
-    //"strconv"
+    "log"
 )
 
 type TaskQueue struct {
@@ -17,7 +16,7 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
         cmd := <-tq.Queue
         cmdType := cmd.Command
 
-        fmt.Println("TQ: "+cmdType)
+        log.Printf("INFO: Recieved command on taskqueue: %s",cmdType)
 
         switch cmdType  {
         case "GetStatus":

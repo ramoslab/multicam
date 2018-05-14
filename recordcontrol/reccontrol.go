@@ -13,6 +13,7 @@ import (
     "strings"
     "time"
     "sync"
+    "log"
 )
 
 // The record control class
@@ -41,13 +42,11 @@ type RecordControl struct {
 // Updates the state value 
 func (rc *RecordControl) setState(newstate int) {
     rc.Status.Stateid = newstate
-    fmt.Println("State: ",newstate)
 }
 
 // Sets a new configuration
 func (rc *RecordControl) SetConfig(config RecordConfig) {
     rc.Config = config
-    fmt.Println("Setting config as:",config)
 }
 
 // Getters
@@ -76,21 +75,28 @@ func (rc *RecordControl) GetConfig() RecordConfig {
 func (rc *RecordControl) CheckVideoHw() []Hardware {
     rc.setState(3)
     files, err := ioutil.ReadDir("/dev/")
-    //FIXME error handling
     if err != nil {
-        fmt.Println("Error",err)
+        log.Print("ERROR: Video hardware did not check out; Message: ",err)
     }
 
     // Retrieve all available cameras
     var cams []string
 
-    fmt.Println("Available Webcams:")
     for _, f := range files {
         if strings.HasPrefix(f.Name(), "video") {
-            fmt.Println("/dev/"+f.Name())
             cams = append(cams, "/dev/"+f.Name())
         }
     }
+
+    // Log available cameras
+    var cam_info string
+    cam_info = "INFO: Available webcams:"
+    for _, cam := range cams {
+        cam_info = cam_info+" "+cam
+    }
+
+    log.Print(cam_info)
+
     hardware := make([]Hardware,len(cams))
 
     // Add all available cams to the hardware list
@@ -102,18 +108,16 @@ func (rc *RecordControl) CheckVideoHw() []Hardware {
     return hardware
 }
 
-//TODO Not yet implemented
 // Checks audio hardware
 func (rc *RecordControl) CheckAudioHw() []Hardware {
     rc.setState(4)
     var retVal []Hardware
-    fmt.Println("Checking Audio Hardware")
     // Search for available microphones using search string of config
     searchCmd := exec.Command("/bin/sh","-c",fmt.Sprintf("pactl list | grep -A2 'Source #' | grep 'Name: ' | cut -d\" \" -f2 | grep %s",rc.SearchStringAudio))
     out, err := searchCmd.Output()
     var temp []string
     if err != nil {
-        fmt.Println("Error:",err)
+        log.Print("ERROR: Could not call command for finding the available microphones; Message: ",err)
         retVal = []Hardware{}
     } else {
         temp = strings.Split(strings.TrimSpace(string(out)),"\n")
@@ -121,11 +125,7 @@ func (rc *RecordControl) CheckAudioHw() []Hardware {
             retVal = append(retVal, Hardware{Id: i, Recording: false, Hardware: mic, Command: exec.Command("")})
 
         }
-        fmt.Println("Output:",temp)
     }
-
-
-    //return []Hardware{Hardware{Id: 0, Recording: false, Hardware: "/dev/mic0", Command: cmd},Hardware{Id: 1, Recording: false, Hardware: "/dev/mic1", Command: cmd}}
     return retVal
 }
 
@@ -133,8 +133,11 @@ func (rc *RecordControl) CheckAudioHw() []Hardware {
 func (rc *RecordControl) CheckDiskspace() Disk {
     rc.setState(5)
     var stat syscall.Statfs_t
-    //FIXME error handling
-    syscall.Statfs(rc.Config.RecFolder, &stat)
+    err := syscall.Statfs(rc.Config.RecFolder, &stat)
+
+    if err != nil {
+        log.Print("ERROR: Could not stat filesystem; Message:", err)
+    }
 
     return Disk{SpaceAvailable: stat.Bavail * uint64(stat.Bsize) / uint64(math.Pow(1024,3)),
                 SpaceTotal: stat.Blocks * uint64(stat.Bsize) / uint64(math.Pow(1024,3))}
@@ -156,6 +159,7 @@ func (rc *RecordControl) CheckSavingLocation() bool {
         err = os.MkdirAll(rc.Config.RecFolder, os.ModePerm)
         if err != nil {
             retVal = false
+            log.Print("ERROR: Could not create saving location; Message:", err)
         } else {
             retVal = true
         }
@@ -192,10 +196,11 @@ func (rc *RecordControl) StartRecording() {
     // Disable rightlight (auto exposure) before starting to record
     for _,cam := range rc.Status.Cams {
         rightlight_cmd := exec.Command("v4l2-ctl","-c","exposure_auto_priority=0","-d",cam.Hardware)
-        fmt.Println(rightlight_cmd.Args)
         err := rightlight_cmd.Run()
         if err != nil {
-            fmt.Println("Could not disable rightlight for",cam.Hardware,"because of error:",err)
+            log.Printf("WARNING: Could not disable RightLight for %s; Message: %s",cam.Hardware,err)
+        } else {
+            log.Printf("INFO: Disabling RightLight for %s",cam.Hardware)
         }
     }
 
@@ -230,15 +235,20 @@ func (rc *RecordControl) StartRecording() {
     for _,camid := range rc.Config.Cameras {
         index := find_camera(rc, camid)
         if index < 0 {
-            fmt.Println("Error finding camera")
+            log.Print("ERROR: Error finding camera")
         }
-        fmt.Printf("Starting recording on camera: CamId: %d, Index: %d, Hardware: %s\n",camid,index,rc.Status.Cams[index].Hardware)
+
 
         cmd := rc.Status.Cams[index].Command
         rc.Status.Cams[index].Recording = true
 
         err := cmd.Start()
-        fmt.Println(cmd.Args,err)
+        if err != nil {
+            log.Printf("ERROR: Could not start recording on camera %s; Message: %s",camid,err)
+        } else {
+            log.Printf("INFO: Started recording on camera: CamId: %d, Index: %d, Hardware: %s\n",camid,index,rc.Status.Cams[index].Hardware)
+        }
+
         go waitCamRecording(cmd,camid,rc)
     }
 
@@ -272,17 +282,19 @@ func (rc *RecordControl) StartRecording() {
     // Start commands
     for _,micid := range rc.Config.Microphones {
         index := find_microphone(rc, micid)
-        fmt.Println(index)
         if index < 0 {
-            fmt.Println("Error finding microphone")
+            log.Print("ERROR: Error finding microphone")
         }
-        fmt.Printf("Starting recording on microphone: MicId: %d, Index: %d, Hardware: %s\n",micid,index,rc.Status.Mics[index].Hardware)
 
         cmd := rc.Status.Mics[index].Command
         rc.Status.Mics[index].Recording = true
 
         err := cmd.Start()
-        fmt.Println(cmd.Args,err)
+        if err != nil {
+            log.Printf("ERROR: could not start recording on microphone %s; Message: %s",micid,err)
+        } else {
+            log.Printf("INFO: Started recording on camera: CamId: %d, Index: %d, Hardware: %s\n",micid,index,rc.Status.Mics[index].Hardware)
+        }
         go waitMicRecording(cmd,micid,rc)
     }
 }
@@ -292,22 +304,22 @@ func (rc *RecordControl) StopRecording() {
     rc.setState(0)
     // Find all cameras that are still recording
     for i,cam := range rc.Status.Cams {
-        fmt.Println(cam)
         if cam.Recording {
-            fmt.Printf("Stopping process of camera %s\n", cam.Hardware)
-            fmt.Println(cam.Command.Args)
+            log.Printf("INFO: Stopping process of camera %s\n", cam.Hardware)
             err := rc.Status.Cams[i].Command.Process.Signal(syscall.SIGINT)
-            fmt.Println(err)
+            if err != nil {
+                log.Printf("ERROR: Error stopping process of camera %s",cam.Hardware)
+            }
         }
     }
 
     for i,mic := range rc.Status.Mics {
-        fmt.Println(mic)
         if mic.Recording {
-            fmt.Printf("Stopping process of camera %s\n", mic.Hardware)
-            fmt.Println(mic.Command.Args)
+            log.Printf("INFO: Stopping process of camera %s\n", mic.Hardware)
             err := rc.Status.Mics[i].Command.Process.Signal(syscall.SIGINT)
-            fmt.Println(err)
+            if err != nil {
+                log.Printf("ERROR: Error stopping process of microphone %s",mic.Hardware)
+            }
         }
     }
 }
@@ -320,9 +332,7 @@ func (rc *RecordControl) CheckConfig(config RecordConfig) RecordConfig {
     var microphones_existing []int
 
     // Check cameras
-    fmt.Println(config.Cameras)
-    for i,n := range config.Cameras {
-        fmt.Println(i,n, find_camera(rc, n))
+    for _,n := range config.Cameras {
         // Try to find the camera specified in the config
         if find_camera(rc, n) > -1 {
             // Add the camera to the list of existing cameras
@@ -333,8 +343,7 @@ func (rc *RecordControl) CheckConfig(config RecordConfig) RecordConfig {
     config.Cameras = cameras_existing
 
     // Check microphones
-    for i,n := range config.Microphones {
-        fmt.Println(i,n, find_microphone(rc, n))
+    for _,n := range config.Microphones {
         // Try to find the microphone specified in the config
         if find_microphone(rc, n) > -1 {
             // Add the camera to the list of existing cameras
@@ -355,7 +364,7 @@ func (rc RecordControl) CaptureFrame() []string {
     captures, err := ioutil.ReadDir("static/captures")
     if err != nil {
         //FIXME error handling
-        fmt.Println("Error with file")
+        log.Printf("ERROR: Could not read capture directory; Message: %s",err)
     }
     for _, file := range captures {
         if strings.HasPrefix(file.Name(),"captmpv") {
@@ -366,8 +375,6 @@ func (rc RecordControl) CaptureFrame() []string {
     // Capture
     output := make([]string, len(rc.Status.Cams))
     for i,cam := range rc.Status.Cams {
-        fmt.Println(i)
-
 
         // Generate file name with time
         t := time.Now()
@@ -378,10 +385,10 @@ func (rc RecordControl) CaptureFrame() []string {
         cmd := exec.Command("fswebcam",argstr...)
         _, err = cmd.Output()
         if err != nil {
-            fmt.Println(err)
+            log.Printf("ERROR: Could not capture from for camera %s; Message: %s",cam.Hardware,err)
             output[i] = ""
         } else {
-            fmt.Println("Captured frame:",fname)
+            log.Printf("INFO: Captured frame: %s",fname)
             output[i] = fname
         }
     }
@@ -417,7 +424,7 @@ func (rc *RecordControl) TaskGetStatus() []byte {
     retVal, err := json.Marshal(rc.GetStatus())
     // FIXME Proper error handling
     if err != nil {
-        fmt.Println("Error marshalling state", err)
+        log.Printf("ERROR: Error marshalling state to json; Message: %s", err)
         // If marshalling fails, return empty state
         emptyStatus := CreateEmptyStatus()
         retVal, _ = json.Marshal(emptyStatus)
@@ -431,7 +438,8 @@ func (rc *RecordControl) TaskGetConfig() []byte {
     // Marshal the config into JSON
     retVal, err := json.Marshal(rc.GetConfig())
     // FIXME Proper error handling 
-    if err != nil { fmt.Println("Error marshalling config", err)
+    if err != nil {
+        log.Printf("ERROR: Error marshalling config to json. Message: %s", err)
         // If marshalling fails, return empty state
         emptyConfig := CreateEmptyConfig()
         retVal, _ = json.Marshal(emptyConfig)
@@ -445,12 +453,13 @@ func (rc *RecordControl) TaskGetConfig() []byte {
 func (rc *RecordControl) TaskSetConfig(config RecordConfig) []byte {
     // Check if server is IDLE
     if rc.GetStateId() <= 1 {
-        fmt.Println("Setting new config.")
+        log.Print("INFO: Setting new config.")
         rc.SetConfig(config)
-        fmt.Println("Checking new config.")
+        log.Print("INFO: Checking new config.")
         rc.CheckConfig(config)
+    } else {
+        log.Print("WARNING: New config not accepted, because server was not idle.")
     }
-    //TODO Log new config not accepted because server is not idle
     // If not idle send previous config
     return rc.TaskGetConfig()
 }
@@ -546,13 +555,13 @@ func CreateEmptyConfig() RecordConfig {
 // Waits for a process to end
 // Sets the Recording to false in the Hardware item the command corresponds to
 func waitCamRecording(cmd *exec.Cmd, camid int, rc *RecordControl) {
-    fmt.Printf("Waiting for camid %d\n",camid)
     // Wait for process to die
     err := cmd.Wait()
     if err != nil {
-        fmt.Println(err)
+        log.Printf("ERROR: Error waiting for process of camera %d to finish; Message: %s",camid,err)
+    } else {
+        log.Printf("INFO: Process of camid %d died.\n",camid)
     }
-    fmt.Printf("Process of camid %d died.\n",camid)
     // Notify record control that the process has died
     rc.mux.Lock()
     defer rc.mux.Unlock()
@@ -566,13 +575,13 @@ func waitCamRecording(cmd *exec.Cmd, camid int, rc *RecordControl) {
 // Waits for a process to end
 // Sets the Recording to false in the Hardware item the command corresponds to
 func waitMicRecording(cmd *exec.Cmd, micid int, rc *RecordControl) {
-    fmt.Printf("Waiting for micid %d\n",micid)
     // Wait for process to die
     err := cmd.Wait()
     if err != nil {
-        fmt.Println(err)
+        log.Printf("ERROR: Error waiting for process of microphone %d to finish; Message: %s",err)
+    } else {
+        log.Printf("INFO: Process of micid %d died.\n",micid)
     }
-    fmt.Printf("Process of micid %d died.\n",micid)
     // Notify record control that the process has died
     rc.mux.Lock()
     defer rc.mux.Unlock()
@@ -600,7 +609,6 @@ func find_camera(rc *RecordControl, camid int) int {
 func find_microphone(rc *RecordControl, micid int) int {
     retval := -1
     for i,mic := range rc.Status.Mics {
-        fmt.Println(micid, mic.Id)
         if micid == mic.Id {
             retval = i
         }
