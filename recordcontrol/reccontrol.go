@@ -14,6 +14,7 @@ import (
     "time"
     "sync"
     "log"
+    "regexp"
 )
 
 // The record control class
@@ -328,6 +329,7 @@ func (rc *RecordControl) StopRecording() {
 // Changes the configuration to contain only those cameras and microphones that are currently connected and accessible 
 // Returns the non-altered or altered configuration
 func (rc *RecordControl) CheckConfig(config RecordConfig) RecordConfig {
+    fallback_config := CreateEmptyConfig()
     var cameras_existing []int
     var microphones_existing []int
 
@@ -352,6 +354,17 @@ func (rc *RecordControl) CheckConfig(config RecordConfig) RecordConfig {
     }
     // Set new list of existing microphones as config
     config.Microphones = microphones_existing
+
+    // Check subject name
+    var validSid = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+    if !validSid.MatchString(config.Sid) {
+        config.Sid = fallback_config.Sid
+    }
+    // Check saving location
+    var validFolder = regexp.MustCompile(`^(/?\.?[a-z0-9_-]+)+/{1}$`)
+    if !validFolder.MatchString(config.RecFolder) {
+        config.RecFolder = fallback_config.RecFolder
+    }
 
     return config
 }
@@ -453,10 +466,10 @@ func (rc *RecordControl) TaskGetConfig() []byte {
 func (rc *RecordControl) TaskSetConfig(config RecordConfig) []byte {
     // Check if server is IDLE
     if rc.GetStateId() <= 1 {
-        log.Print("INFO: Setting new config.")
-        rc.SetConfig(config)
         log.Print("INFO: Checking new config.")
-        rc.CheckConfig(config)
+        newconfig := rc.CheckConfig(config)
+        log.Print("INFO: Setting new config.")
+        rc.SetConfig(newconfig)
     } else {
         log.Print("WARNING: New config not accepted, because server was not idle.")
     }

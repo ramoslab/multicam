@@ -95,7 +95,7 @@ function get_status() {
 
     var config = {
         url: "http://localhost:8040/request",
-        data: JSON.stringify({"Cooooommand": "REQ", "Data": {"CmdType":"GETSTATUS"}}),
+        data: JSON.stringify({"Command": "REQ", "Data": {"CmdType":"GETSTATUS"}}),
         type: "POST",
         contentType: "application/json", // Request
         dataType: "json" // Response

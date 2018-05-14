@@ -196,6 +196,7 @@ func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Reque
         // Error state because parsing failed
         http.Error(w, "Error parsing command sent by client.", http.StatusBadRequest)
     } else {
+        // Send json message back to client
         w.Header().Set("Content-Type", "application/json")
         w.Write(feedback)
     }
