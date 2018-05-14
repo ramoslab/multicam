@@ -326,7 +326,7 @@ func (rc *RecordControl) CheckConfig(config RecordConfig) RecordConfig {
         // Try to find the camera specified in the config
         if find_camera(rc, n) > -1 {
             // Add the camera to the list of existing cameras
-            cameras_existing = append(microphones_existing, n)
+            cameras_existing = append(cameras_existing, n)
         }
     }
     // Set new list of existing cameras as config
