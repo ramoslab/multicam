@@ -189,6 +189,16 @@ func (rc *RecordControl) CheckGstreamer() bool {
 func (rc *RecordControl) StartRecording() {
     rc.setState(2)
 
+    // Disable rightlight (auto exposure) before starting to record
+    for _,cam := range rc.Status.Cams {
+        rightlight_cmd := exec.Command("v4l2-ctl","-c","exposure_auto_priority=0","-d",cam.Hardware)
+        fmt.Println(rightlight_cmd.Args)
+        err := rightlight_cmd.Run()
+        if err != nil {
+            fmt.Println("Could not disable rightlight for",cam.Hardware,"because of error:",err)
+        }
+    }
+
     // Generate the gstreamer command for recording the video from the webcams
     gstcommand := "gst-launch-1.0"
     t := time.Now()
@@ -219,6 +229,9 @@ func (rc *RecordControl) StartRecording() {
     // Start commands
     for _,camid := range rc.Config.Cameras {
         index := find_camera(rc, camid)
+        if index < 0 {
+            fmt.Println("Error finding camera")
+        }
         fmt.Printf("Starting recording on camera: CamId: %d, Index: %d, Hardware: %s\n",camid,index,rc.Status.Cams[index].Hardware)
 
         cmd := rc.Status.Cams[index].Command
@@ -258,7 +271,11 @@ func (rc *RecordControl) StartRecording() {
 
     // Start commands
     for _,micid := range rc.Config.Microphones {
-        index := find_camera(rc, micid)
+        index := find_microphone(rc, micid)
+        fmt.Println(index)
+        if index < 0 {
+            fmt.Println("Error finding microphone")
+        }
         fmt.Printf("Starting recording on microphone: MicId: %d, Index: %d, Hardware: %s\n",micid,index,rc.Status.Mics[index].Hardware)
 
         cmd := rc.Status.Mics[index].Command
@@ -283,31 +300,51 @@ func (rc *RecordControl) StopRecording() {
             fmt.Println(err)
         }
     }
+
+    for i,mic := range rc.Status.Mics {
+        fmt.Println(mic)
+        if mic.Recording {
+            fmt.Printf("Stopping process of camera %s\n", mic.Hardware)
+            fmt.Println(mic.Command.Args)
+            err := rc.Status.Mics[i].Command.Process.Signal(syscall.SIGINT)
+            fmt.Println(err)
+        }
+    }
 }
 
 // Checks if the given configuration matches the current status
-func (rc *RecordControl) CheckConfig(config RecordConfig) bool {
-    var retVal bool
+// Changes the configuration to contain only those cameras and microphones that are currently connected and accessible 
+// Returns the non-altered or altered configuration
+func (rc *RecordControl) CheckConfig(config RecordConfig) RecordConfig {
+    var cameras_existing []int
+    var microphones_existing []int
+
     // Check cameras
-    for _,n := range config.Cameras {
-        if n < len(rc.Status.Cams) {
-            retVal = true
+    fmt.Println(config.Cameras)
+    for i,n := range config.Cameras {
+        fmt.Println(i,n, find_camera(rc, n))
+        // Try to find the camera specified in the config
+        if find_camera(rc, n) > -1 {
+            // Add the camera to the list of existing cameras
+            cameras_existing = append(microphones_existing, n)
         }
     }
+    // Set new list of existing cameras as config
+    config.Cameras = cameras_existing
 
     // Check microphones
-    for _,n := range config.Microphones {
-        if n < len(rc.Status.Mics) {
-            retVal = retVal && true
-        } else {
-            retVal = retVal && false
+    for i,n := range config.Microphones {
+        fmt.Println(i,n, find_microphone(rc, n))
+        // Try to find the microphone specified in the config
+        if find_microphone(rc, n) > -1 {
+            // Add the camera to the list of existing cameras
+            microphones_existing = append(microphones_existing, n)
         }
     }
+    // Set new list of existing microphones as config
+    config.Microphones = microphones_existing
 
-    // Check saving location
-    retVal = retVal && rc.CheckSavingLocation()
-
-    return retVal
+    return config
 }
 
 // Captures a single frame of all available webcams and stores them in a jpg file using fswebcam
@@ -358,6 +395,7 @@ func (rc *RecordControl) Preflight() {
     rc.Status.Disk = rc.CheckDiskspace()
     rc.Status.LocationOk = rc.CheckSavingLocation()
     rc.Status.GStreamerOk = rc.CheckGstreamer()
+    rc.Config = rc.CheckConfig(rc.Config)
     rc.setState(0)
 }
 
@@ -551,6 +589,19 @@ func find_camera(rc *RecordControl, camid int) int {
     retval := -1
     for i,cam := range rc.Status.Cams {
         if camid == cam.Id {
+            retval = i
+        }
+    }
+    return retval
+}
+
+// Finds microphone with given Id in the status of recording control
+// Returns index of this microphone
+func find_microphone(rc *RecordControl, micid int) int {
+    retval := -1
+    for i,mic := range rc.Status.Mics {
+        fmt.Println(micid, mic.Id)
+        if micid == mic.Id {
             retval = i
         }
     }
