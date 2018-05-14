@@ -16,7 +16,7 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
         cmd := <-tq.Queue
         cmdType := cmd.Command
 
-        log.Printf("INFO: Recieved command on taskqueue: %s",cmdType)
+        log.Printf("INFO: Executing task on taskqueue: %s",cmdType)
 
         switch cmdType  {
         case "GetStatus":
@@ -47,7 +47,7 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
         case "Error":
             //TODO run error handling function of task queue
         case "ReturnError":
-            //TODO Execute command on recordcontrol (e.g. rc.GetState(cmd.FeedbackChannel)
+            cmd.FeedbackChannel <- []byte("")
         default:
             //TODO Some sort of error handling
         }

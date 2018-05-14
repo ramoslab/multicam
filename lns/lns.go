@@ -149,7 +149,7 @@ func loadPage() (*Page, error) {
 func PageHandler(w http.ResponseWriter, r *http.Request) {
     p, err := loadPage()
     if err != nil {
-        log.Print("ERROR: Error loading static page; Message: %s",err)
+        log.Printf("ERROR: Error loading static page; Message: %s",err)
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
@@ -192,8 +192,13 @@ func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Reque
     var feedback []byte
     feedback = <-rhttps.HttpFeedback
     //TODO Timeout for HTTP respones if nothing is on the channel after a while (e.g. if parsing the command fails or so)
-    w.Header().Set("Content-Type", "application/json")
-    w.Write(feedback)
+    if len(feedback) == 0 {
+        // Error state because parsing failed
+        http.Error(w, "Error parsing command sent by client.", http.StatusBadRequest)
+    } else {
+        w.Header().Set("Content-Type", "application/json")
+        w.Write(feedback)
+    }
 }
 
 // Parse commands received via HTTP
@@ -206,6 +211,7 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
         creqData, ok := creq["Data"].(map[string]interface{})
         if !ok {
             log.Print("WARNING: Error running type assertion (REQ).")
+            retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
             return retVal
         }
         switch creqData["CmdType"] {
@@ -215,14 +221,14 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
             retVal = taskqueue.Task{Command: "GetConfig", Data: nil, FeedbackChannel: httpFeedback}
         default:
             log.Print("WARNING: Command not understood (REQ).")
-            //FIXME Proper error handling (using http?! error type)
-                retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
+            retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
         }
     case "POST":
         // Type assertion for Data as map
         creqData, ok := creq["Data"].(map[string]interface{})
         if !ok {
             log.Print("WARNING: Error running type assertion (POST).")
+            retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
             return retVal
         }
 
@@ -231,6 +237,7 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
                 payload, ok := creqData["Values"].(map[string]interface{})
                 if !ok {
                     log.Printf("WARNING: Error running type assertion (POST:SETCONFIG).")
+                    retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
                     return retVal
                 }
                 retVal = taskqueue.Task{Command: "SetConfig", Data: payload, FeedbackChannel: httpFeedback}
@@ -243,8 +250,8 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
     case "CTL":
         creqData, ok := creq["Data"].(map[string]interface{})
         if !ok {
-            //FIXME Error handling
             log.Printf("ERROR: Error running type assertion (CTL).")
+            retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
             return retVal
         }
         switch creqData["CmdType"] {
@@ -255,8 +262,13 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
                 retVal = taskqueue.Task{Command: "StartRecording", Data: nil, FeedbackChannel: httpFeedback}
             case "STOP":
                 retVal = taskqueue.Task{Command: "StopRecording", Data: nil, FeedbackChannel: httpFeedback}
+            default:
+                log.Print("WARNING: Command not understood (CTL).")
+                retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
         }
         //TODO Implement data
+    default:
+        retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
     }
     return retVal
 }
