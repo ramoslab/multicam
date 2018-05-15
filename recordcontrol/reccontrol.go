@@ -178,13 +178,11 @@ func (rc *RecordControl) CheckSavingLocation() bool {
     return retVal
 }
 
-//FIXME Necessary? If so, implement correctly
 // Check if other gstreamer processes are running
 func (rc *RecordControl) CheckGstreamer() bool {
 
     rc.setState(7)
     //Check if dead and unkillable GStreamer processes are running. Return "true" if no.
-    //TODO Implement properly later
     _, err := exec.Command("sh", "-c", "ps -aux | grep GStreamer").Output()
 
     //fmt.Println("Result:",string(out))
@@ -346,8 +344,6 @@ func (rc *RecordControl) StopRecording() {
             }
         }
     }
-
-    //TODO Write Subtitles to file
 }
 
 // Checks if the given configuration matches the current status
@@ -401,7 +397,6 @@ func (rc RecordControl) CaptureFrame() []string {
     // Delete all webcam captures files
     captures, err := ioutil.ReadDir("static/captures")
     if err != nil {
-        //FIXME error handling
         log.Printf("ERROR: Could not read capture directory; Message: %s",err)
     }
     for _, file := range captures {
@@ -447,7 +442,6 @@ func (rc *RecordControl) Preflight() {
 // Saves a subtitle entry to RecordControl
 // The time is stored in milliseconds relative to the starting time
 func (rc *RecordControl) SaveSubtitleEntry(text string, receivedTime time.Time) {
-    //TODO Check string
     rc.Data = append(rc.Data, Data{ReceivedTime: receivedTime, Trigger: text})
 }
 
@@ -467,7 +461,6 @@ func (rc *RecordControl) TaskGetStatus() []byte {
     }
     // Marshal the current status into JSON
     retVal, err := json.Marshal(rc.GetStatus())
-    // FIXME Proper error handling
     if err != nil {
         log.Printf("ERROR: Error marshalling state to json; Message: %s", err)
         // If marshalling fails, return empty state
@@ -482,7 +475,6 @@ func (rc *RecordControl) TaskGetStatus() []byte {
 func (rc *RecordControl) TaskGetConfig() []byte {
     // Marshal the config into JSON
     retVal, err := json.Marshal(rc.GetConfig())
-    // FIXME Proper error handling 
     if err != nil {
         log.Printf("ERROR: Error marshalling config to json. Message: %s", err)
         // If marshalling fails, return empty state

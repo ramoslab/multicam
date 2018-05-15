@@ -2,7 +2,6 @@
 package main
 
 import (
-    "fmt"
     "net"
     "bitbucket.com/andrews2000/multicam/recordcontrol"
     "bitbucket.com/andrews2000/multicam/lns"
@@ -42,7 +41,6 @@ func main() {
     }
 
     // Get configuration for the recording
-    //FIXME Check error handling here
     sid := viper.GetString("Recording.SID")
     recfolder := viper.GetString("Recording.RecFolder")
     cams_cfg := viper.Get("Recording.Cameras").([]interface{})
@@ -126,17 +124,4 @@ func main() {
     go http.ListenAndServe(":8040", handler)
     // Start the task management routine
     tq1.ExecuteTask(&rec1)
-}
-
-//TODO It remains an open question if the stopAndExit procedure should remain here or go to the TaskQueue
-
-// Stop UDP Server and exit
-//FIXME Needs to stop the recording as well
-//FIXME Needs to stop the task manager as well (or does it?)
-func stopAndExit(qudp chan bool, conn *net.UDPConn) {
-    fmt.Println("Closing shutdown channel.")
-    close(qudp)
-    fmt.Println("Closing UDP connection.")
-    conn.Close()
-    //fmt.Println("Stopping the recording.")
 }

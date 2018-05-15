@@ -89,15 +89,6 @@ func parseUdpCommand(creq map[string]interface{}, udpFeedback chan []byte) taskq
             retVal = taskqueue.Task{Command: "GetState", Data: nil, FeedbackChannel: udpFeedback}
         case "GETCONFIG":
             retVal = taskqueue.Task{Command: "GetConfig", Data: nil, FeedbackChannel: udpFeedback}
-                    //var data taskqueue.ConfigStruct
-                    //if err := json.Unmarshal(cmData, &data); err != nil {
-                    //    fmt.Println(err)
-                    //    //FIXME Proper error handling
-                    //    retVal = taskqueue.Task{Command: "ReturnError", Data: err, FeedbackChannel: httpFeedback}
-                    //} else {
-                    //    //TODO properly set data
-                    //    retVal = taskqueue.Task{Command: "SetConfig", Data: nil, FeedbackChannel: httpFeedback}
-                    //}
                 default:
                 //FIXME Proper error handling (using error type)
                 retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: udpFeedback}
@@ -192,7 +183,6 @@ func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Reque
     // This is used to send the http response back to the client before the client requestHandler returns
     var feedback []byte
     feedback = <-rhttps.HttpFeedback
-    //TODO Timeout for HTTP respones if nothing is on the channel after a while (e.g. if parsing the command fails or so)
     if len(feedback) == 0 {
         // Error state because parsing failed
         http.Error(w, "Error parsing command sent by client.", http.StatusBadRequest)
@@ -257,9 +247,6 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
             return retVal
         }
         switch creqData["CmdType"] {
-            case "PREPARE":
-            //TODO Is it necessary?
-                retVal = taskqueue.Task{Command: "Preflight", Data: nil, FeedbackChannel: httpFeedback}
             case "START":
                 retVal = taskqueue.Task{Command: "StartRecording", Data: nil, FeedbackChannel: httpFeedback}
             case "STOP":
