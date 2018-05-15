@@ -75,8 +75,6 @@ func (rc *RecordControl) GetConfig() RecordConfig {
     return rc.Config
 }
 
-
-
 // Checking (preflight)
 
 // Gets all available cameras
@@ -126,7 +124,7 @@ func (rc *RecordControl) CheckAudioHw() []Hardware {
     out, err := searchCmd.Output()
     var temp []string
     if err != nil {
-        log.Print("ERROR: Could not call command for finding the available microphones; Message: ",err)
+        log.Print("ERROR: Calling command for finding the available microphones failed; Message: ",err)
         retVal = []Hardware{}
     } else {
         temp = strings.Split(strings.TrimSpace(string(out)),"\n")

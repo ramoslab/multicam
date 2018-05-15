@@ -155,6 +155,8 @@ function set_config() {
     // Response is the current config of the server
     var done_fct = function(json) {
         set_client_config(json);
+        get_status();
+        get_config();
     }
 
     $.ajax(config).done(done_fct).fail(fail_fct);
@@ -191,6 +193,7 @@ function stop_recording() {
     // Response is the current config of the server
     var done_fct = function(json) {
         set_client_status(json);
+        get_config();
     }
 
     $.ajax(config).done(done_fct).fail(fail_fct);
@@ -207,12 +210,7 @@ function send_trigger() {
         dataType: "json" // Response
     };
 
-    // Response is the current config of the server
-    var done_fct = function(json) {
-        set_client_config(json);
-    }
-
-    $.ajax(config).done(done_fct).fail(fail_fct);
+    $.ajax(config).fail(fail_fct);
 }
 
 
@@ -224,6 +222,7 @@ function fail_fct(xhr, status, errorThrown) {
 
 // Sets the config of the server in the view
 function set_client_config(json) {
+    console.log("Setting client config.")
     // Reset cameras to "not recording"
     $.each(CPVM.ServerStatus().CamList(), function(i,item) {
         item.cfg_record(false);
@@ -255,6 +254,7 @@ function set_client_config(json) {
 
 // Sets the status of the server in the view
 function set_client_status(json) {
+    console.log("Setting client status.")
     CPVM.ServerStatus(new ServerStatus());
     CPVM.ServerStatus().StateId(json['Stateid']);
     $.each(json['Cams'], function(i,item) {
@@ -267,6 +267,9 @@ function set_client_status(json) {
     CPVM.ServerStatus().Disk(new Disk(json['Disk']['SpaceAvailable'], json['Disk']['SpaceTotal']));
     CPVM.ServerStatus().SavingLocationOk(json['LocationOk']);
     CPVM.ServerStatus().GStreamerOk(json['GStreamerOk']);
+    CPVM.ServerStatus().SavingLocation(CPVM.RecordingConfig().SavingLocation());
+    CPVM.ServerStatus().Sid(CPVM.RecordingConfig().Sid());
+
 }
 
 

@@ -26,39 +26,56 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
             cmd.FeedbackChannel <- rc.TaskGetConfig()
         case "SetConfig":
             data := cmd.Data.(map[string]interface{})
-            //FIXME Error handling
+            cams_cfg, cams_ok := data["Cameras"].([]interface{})
+            mics_cfg, mics_ok := data["Microphones"].([]interface{})
+            if !cams_ok || !mics_ok  {
+                log.Print("WARNING: Error running type assertion (TQ:SetConfig).")
+                cmd.FeedbackChannel <- []byte("")
+            } else {
+                cams := make([]int, len(cams_cfg))
+                mics := make([]int, len(mics_cfg))
+                for i,cam := range cams_cfg {
+                    cam_float, cams_ok := cam.(float64)
+                    if cams_ok {
+                        cams[i] = int(cam_float)
+                    }
+                }
+                for j,mic := range mics_cfg {
+                    mic_float, mics_ok := mic.(float64)
+                    if mics_ok {
+                        mics[j] = int(mic_float)
+                    }
+                }
 
-            cams_cfg := data["Cameras"].([]interface{})
-            cams := make([]int, len(cams_cfg))
-            for i,cam := range cams_cfg {
-                cams[i] = int(cam.(float64))
-            }
-
-            mics_cfg := data["Microphones"].([]interface{})
-            mics := make([]int, len(mics_cfg))
-            for i,mic := range mics_cfg {
-                mics[i] = int(mic.(float64))
-            }
-
+                if !cams_ok || !mics_ok {
+                    log.Print("WARNING Error running type assertion (TQ:SetConfig).")
+                    cmd.FeedbackChannel <- []byte("")
+                }
             recConfig := recordcontrol.RecordConfig{Cameras: cams, Microphones: mics, Sid: data["Sid"].(string), RecFolder: data["RecFolder"].(string)}
             cmd.FeedbackChannel <- rc.TaskSetConfig(recConfig)
+            }
         case "StartRecording":
             cmd.FeedbackChannel <- rc.TaskStartRecording()
         case "StopRecording":
             cmd.FeedbackChannel <- rc.TaskStopRecording()
         case "Data":
-            //FIXME error handling
-            //TODO unmarshal
-            data := cmd.Data.(map[string]interface{})
-            trigger := data["Trigger"].(string)
-            recvTime := data["recvTime"].(time.Time)
-            cmd.FeedbackChannel <- rc.TaskSaveSubtitleEntry(trigger, recvTime)
-        case "Error":
-            //TODO run error handling function of task queue
+            data, data_ok := cmd.Data.(map[string]interface{})
+
+            if data_ok {
+                trigger, trigger_ok := data["Trigger"].(string)
+                recvTime, recvTime_ok := data["recvTime"].(time.Time)
+                if !trigger_ok || !recvTime_ok {
+                    cmd.FeedbackChannel <- []byte("")
+                } else {
+                    cmd.FeedbackChannel <- rc.TaskSaveSubtitleEntry(trigger, recvTime)
+                }
+            } else {
+                cmd.FeedbackChannel <- []byte("")
+            }
         case "ReturnError":
             cmd.FeedbackChannel <- []byte("")
         default:
-            //TODO Some sort of error handling
+            cmd.FeedbackChannel <- []byte("")
         }
     }
 }
