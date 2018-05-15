@@ -451,7 +451,6 @@ func (rc *RecordControl) Preflight() {
 func (rc *RecordControl) SaveSubtitleEntry(text string, receivedTime time.Time) {
     //TODO Check string
     rc.Data = append(rc.Data, Data{ReceivedTime: receivedTime, Trigger: text})
-    fmt.Printf("Starting time %s | Trigger: %s @ %s\n",rc.TimeStart.Format("January, 2 2006 at 15:04:05.0"),text,receivedTime.Sub(rc.TimeStart).String())
 }
 
 // The tasks

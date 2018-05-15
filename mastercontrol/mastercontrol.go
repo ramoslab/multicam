@@ -27,13 +27,9 @@ func main() {
     log.SetOutput(f)
     log.SetFlags(log.Ldate|log.Ltime|log.Lshortfile)
 
+    log.Print("###### STARTING UP ######")
     log.Print("INFO: Reading config.")
 
-    //logInfo := log.New(f, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
-    //logError := log.New(f, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
-    //logFatal := log.New(f, "FATAL: ", log.Ldate|log.Ltime|log.Lshortfile)
-
-    //logInfo.Print("Started server.")
     // Start up Server
 
     // Read configuration
