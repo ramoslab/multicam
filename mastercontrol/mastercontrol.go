@@ -40,13 +40,13 @@ func main() {
     viper.SetConfigName("multicam_config")
     viper.AddConfigPath(".")
 
-    //DEBUG
     err = viper.ReadInConfig()
     if err != nil {
         log.Fatalf("Problem reading config: %s",err)
     }
 
     // Get configuration for the recording
+    //FIXME Check error handling here
     sid := viper.GetString("Recording.SID")
     recfolder := viper.GetString("Recording.RecFolder")
     cams_cfg := viper.Get("Recording.Cameras").([]interface{})

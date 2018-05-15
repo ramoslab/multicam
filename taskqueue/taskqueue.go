@@ -4,6 +4,7 @@ package taskqueue
 import (
     "bitbucket.com/andrews2000/multicam/recordcontrol"
     "log"
+    "time"
 )
 
 type TaskQueue struct {
@@ -25,6 +26,7 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
             cmd.FeedbackChannel <- rc.TaskGetConfig()
         case "SetConfig":
             data := cmd.Data.(map[string]interface{})
+            //FIXME Error handling
 
             cams_cfg := data["Cameras"].([]interface{})
             cams := make([]int, len(cams_cfg))
@@ -44,6 +46,13 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
             cmd.FeedbackChannel <- rc.TaskStartRecording()
         case "StopRecording":
             cmd.FeedbackChannel <- rc.TaskStopRecording()
+        case "Data":
+            //FIXME error handling
+            //TODO unmarshal
+            data := cmd.Data.(map[string]interface{})
+            trigger := data["Trigger"].(string)
+            recvTime := data["recvTime"].(time.Time)
+            cmd.FeedbackChannel <- rc.TaskSaveSubtitleEntry(trigger, recvTime)
         case "Error":
             //TODO run error handling function of task queue
         case "ReturnError":

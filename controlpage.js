@@ -197,6 +197,25 @@ function stop_recording() {
     $.ajax(config).done(done_fct).fail(fail_fct);
 }
 
+// Sends trigger data to the server
+function send_trigger() {
+
+    var config = {
+        url: "http://localhost:8040/request",
+        data: JSON.stringify({"Command": "DATA", "Data": {"Values": {"Trigger" : "Testtrigger"}}}),
+        type: "POST",
+        contentType: "application/json", // Request
+        dataType: "json" // Response
+    };
+
+    // Response is the current config of the server
+    var done_fct = function(json) {
+        set_client_config(json);
+    }
+
+    $.ajax(config).done(done_fct).fail(fail_fct);
+}
+
 
 function fail_fct(xhr, status, errorThrown) {
     console.log("Error: " + errorThrown);

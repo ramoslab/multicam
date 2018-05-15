@@ -32,6 +32,9 @@ type RecordControl struct {
     //7 is checking if other gstreamer processes are running 
     // The actual status of the server (including stateid)
     Status Status
+    // Information regarding triggers
+    TimeStart time.Time
+    Data []Data
     // Configuration items
     SearchStringAudio string
     //Mutex for locking when multiple goroutines running recording commands access record control
@@ -48,6 +51,11 @@ func (rc *RecordControl) setState(newstate int) {
 // Sets a new configuration
 func (rc *RecordControl) SetConfig(config RecordConfig) {
     rc.Config = config
+}
+
+// Sets the current time as starting time
+func (rc *RecordControl) SetStartingTime() {
+    rc.TimeStart = time.Now()
 }
 
 // Getters
@@ -194,6 +202,10 @@ func (rc *RecordControl) CheckGstreamer() bool {
 func (rc *RecordControl) StartRecording() {
     rc.setState(2)
 
+    // Capture starting time t0
+    rc.SetStartingTime()
+    log.Printf("INFO: Starting time of recording is %s",rc.TimeStart.Format("January, 2 2006 at 15:04:05.0"))
+
     // Disable rightlight (auto exposure) before starting to record
     for _,cam := range rc.Status.Cams {
         rightlight_cmd := exec.Command("v4l2-ctl","-c","exposure_auto_priority=0","-d",cam.Hardware)
@@ -238,7 +250,6 @@ func (rc *RecordControl) StartRecording() {
         if index < 0 {
             log.Print("ERROR: Error finding camera")
         }
-
 
         cmd := rc.Status.Cams[index].Command
         rc.Status.Cams[index].Recording = true
@@ -311,6 +322,20 @@ func (rc *RecordControl) StopRecording() {
             if err != nil {
                 log.Printf("ERROR: Error stopping process of camera %s",cam.Hardware)
             }
+            log.Printf("INFO: Writing subtitle file of camera %s\n", cam.Hardware)
+
+            // Write subtitles to file
+            var subtitles string
+            for j,dat := range rc.Data {
+                dur,_ := time.ParseDuration("2s")
+                str := fmt.Sprintf("%d\n%s --> %s\n%s\n\n",j+1,fmtDuration(dat.ReceivedTime.Sub(rc.TimeStart)),fmtDuration(dat.ReceivedTime.Add(dur).Sub(rc.TimeStart)),dat.Trigger)
+                subtitles = subtitles+str
+            }
+
+            err = ioutil.WriteFile(fmt.Sprintf("%s.srt",cam.Command.Args[6][9:len(cam.Command.Args[6])-4]), []byte(subtitles), 0644)
+            if err != nil {
+                log.Printf("ERROR: Error when writing to subtitle file; Message: %s",err)
+            }
         }
     }
 
@@ -323,6 +348,8 @@ func (rc *RecordControl) StopRecording() {
             }
         }
     }
+
+    //TODO Write Subtitles to file
 }
 
 // Checks if the given configuration matches the current status
@@ -419,6 +446,14 @@ func (rc *RecordControl) Preflight() {
     rc.setState(0)
 }
 
+// Saves a subtitle entry to RecordControl
+// The time is stored in milliseconds relative to the starting time
+func (rc *RecordControl) SaveSubtitleEntry(text string, receivedTime time.Time) {
+    //TODO Check string
+    rc.Data = append(rc.Data, Data{ReceivedTime: receivedTime, Trigger: text})
+    fmt.Printf("Starting time %s | Trigger: %s @ %s\n",rc.TimeStart.Format("January, 2 2006 at 15:04:05.0"),text,receivedTime.Sub(rc.TimeStart).String())
+}
+
 // The tasks
 
 // Generate the STATUS response for the client
@@ -498,6 +533,12 @@ func (rc *RecordControl) TaskStopRecording() []byte {
     return rc.TaskGetStatus()
 }
 
+// Handles trigger data
+func (rc *RecordControl) TaskSaveSubtitleEntry(text string, receivedTime time.Time) []byte {
+    rc.SaveSubtitleEntry(text, receivedTime)
+    return []byte(`{"RESPONSE":"ok"}`)
+}
+
 // Structure definitions
 
 // The configuration for the recording
@@ -536,7 +577,10 @@ type Disk struct {
     SpaceTotal uint64
 }
 
-//TODO implement function: Return error
+type Data struct {
+    ReceivedTime time.Time
+    Trigger string
+}
 
 // Helper functions
 
@@ -627,4 +671,19 @@ func find_microphone(rc *RecordControl, micid int) int {
         }
     }
     return retval
+}
+
+// Converts duration into string of format needed for subtitle files
+func fmtDuration(d time.Duration) string {
+	d = d.Round(time.Millisecond)
+
+	h := d / time.Hour
+	d -= h * time.Hour
+	m := d / time.Minute
+	d -= m * time.Minute
+	s := d / time.Second
+	d -= s * time.Second
+	ms := d / time.Millisecond
+
+	return fmt.Sprintf("%02d:%02d:%02d,%03d", h, m, s, ms)
 }

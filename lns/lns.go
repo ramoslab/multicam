@@ -6,6 +6,7 @@ import (
     "net"
     "fmt"
     "log"
+    "time"
     "net/http"
     "encoding/json"
     "io/ioutil"
@@ -267,7 +268,22 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
                 log.Print("WARNING: Command not understood (CTL).")
                 retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
         }
-        //TODO Implement data
+    case "DATA":
+        creqData, ok := creq["Data"].(map[string]interface{})
+        if !ok {
+            log.Printf("ERROR: Error running type assertion (DATA).")
+            retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
+            return retVal
+        }
+        payload, ok := creqData["Values"].(map[string]interface{})
+        if !ok {
+            log.Printf("ERROR: Error running type assertion (DATA:Values)")
+            retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
+            return retVal
+        }
+        // Add current time to payload
+        payload["recvTime"] = time.Now()
+        retVal = taskqueue.Task{Command: "Data", Data: payload, FeedbackChannel: httpFeedback}
     default:
         retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
     }
