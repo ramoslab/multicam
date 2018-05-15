@@ -337,7 +337,7 @@ func (rc *RecordControl) StopRecording() {
 
     for i,mic := range rc.Status.Mics {
         if mic.Recording {
-            log.Printf("INFO: Stopping process of camera %s\n", mic.Hardware)
+            log.Printf("INFO: Stopping process of microphone %s\n", mic.Hardware)
             err := rc.Status.Mics[i].Command.Process.Signal(syscall.SIGINT)
             if err != nil {
                 log.Printf("ERROR: Error stopping process of microphone %s",mic.Hardware)
@@ -624,7 +624,7 @@ func waitMicRecording(cmd *exec.Cmd, micid int, rc *RecordControl) {
     // Wait for process to die
     err := cmd.Wait()
     if err != nil {
-        log.Printf("ERROR: Error waiting for process of microphone %d to finish; Message: %s",err)
+        log.Printf("ERROR: Error waiting for process of microphone %d to finish; Message: %s",micid,err)
     } else {
         log.Printf("INFO: Process of micid %d died.\n",micid)
     }
