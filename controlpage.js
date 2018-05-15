@@ -5,6 +5,12 @@ function ControlPageViewModel() {
     var self = this;
     self.ServerStatus = ko.observable();
     self.RecordingConfig = ko.observable();
+    self.TriggerValue = ko.observable("");
+
+    self.pushTrigger = function() {
+        //console.log(self.TriggerValue());
+        send_trigger(self.TriggerValue());
+    }
 }
 
 // The actual status of the server
@@ -19,8 +25,6 @@ function ServerStatus() {
 
     self.SavingLocation = ko.observable("");
     self.Sid = ko.observable("(unknown subject)");
-
-
 
     self.serverstateBg = ko.computed(function() {
         switch (self.StateId()) {
@@ -200,11 +204,11 @@ function stop_recording() {
 }
 
 // Sends trigger data to the server
-function send_trigger() {
+function send_trigger(trigger_value) {
 
     var config = {
         url: "http://localhost:8040/request",
-        data: JSON.stringify({"Command": "DATA", "Data": {"Values": {"Trigger" : "Testtrigger"}}}),
+        data: JSON.stringify({"Command": "DATA", "Data": {"Values": {"Trigger" : trigger_value}}}),
         type: "POST",
         contentType: "application/json", // Request
         dataType: "json" // Response
