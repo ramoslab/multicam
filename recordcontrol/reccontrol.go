@@ -198,9 +198,11 @@ func (rc *RecordControl) CheckGstreamer() bool {
 func (rc *RecordControl) StartRecording() {
     rc.setState(2)
 
-    // Capture starting time t0
+    // Capture starting time of recording t0
     rc.SetStartingTime()
     log.Printf("INFO: Starting time of recording is %s",rc.TimeStart.Format("January, 2 2006 at 15:04:05.0"))
+    // Delete previous triggers
+    rc.Data = []Data{}
 
     // Disable rightlight (auto exposure) before starting to record
     for _,cam := range rc.Status.Cams {
@@ -261,9 +263,6 @@ func (rc *RecordControl) StartRecording() {
     }
 
     // Generate the gstreamer command for recording the audio from the webcams
-    gstcommand = "gst-launch-1.0"
-    t = time.Now()
-    filename_part = fmt.Sprintf("%s",t.Format("060102_150405"))
     argstrs = [][]string{}
 
     // Iterate over available cameras and assign commands
