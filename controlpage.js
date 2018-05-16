@@ -28,7 +28,7 @@ function ServerStatus() {
     self.serverstateBg = ko.computed(function() {
         switch (self.StateId()) {
             case -1: return '#333'; 
-            case 0: return '#ccc'; 
+            case 0: return '#eee'; 
             case 1: return '#8f9'; 
             case 2: return '#fe8'; 
         }

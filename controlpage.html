@@ -35,22 +35,24 @@
         </div>
         <div class="active_cams">
             <h3>Active cameras</h3>
-            <ul class="cameras" data-bind="foreach: ServerStatus().CamList">
-                <li>
+            <ul class="hardware" data-bind="foreach: ServerStatus().CamList">
+                <li class="hardware">
                     <div class="line">
                         <img data-bind="attr: {src: cam_image}" class="camera_image" />
                         <div class="recording_circle_config" data-bind="visible: cfg_record"></div>
                         <div class="recording_circle" data-bind="visible: recording"></div>
-                        <span class="camera_recording" data-bind="if: recording">Recording from&nbsp;</span>
-                        <span data-bind="text: cam_path"></span>
+                        <div>
+                            <span class="camera_recording" data-bind="if: recording">Recording from&nbsp;</span>
+                            <span data-bind="text: cam_path"></span>
+                        </div>
                     </div>
                 </li>
             </ul>
         </div>
         <div class="active_mics">
             <h3>Active microphones</h3>
-            <ul class="microphones" data-bind="foreach: ServerStatus().MicList">
-                <li>
+            <ul class="hardware" data-bind="foreach: ServerStatus().MicList">
+                <li class="hardware">
                     <div class="line">
                         <div class="recording_circle_config" data-bind="visible: cfg_record"></div>
                         <div class="recording_circle" data-bind="visible: recording"></div>

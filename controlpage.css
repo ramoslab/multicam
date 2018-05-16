@@ -1,3 +1,13 @@
+ul.hardware {
+    list-style-type: none;
+    border: 1px solid #666;
+}
+
+li.hardware {
+    display: inline-block;
+    padding: 15px;
+}
+
 .record_from {
     border-left: 10px solid #f60;
 }
@@ -24,8 +34,8 @@
 }
 
 .recording_circle{
-    width: 10px;
-    height: 10px;
+    width: 160px;
+    height: 20px;
     -webkit-border-radius: 5px;
     -moz-border-radius: 5px;
     border-radius: 5px;
@@ -33,10 +43,10 @@
 }
 
 .recording_circle_config{
-    width: 10px;
-    height: 10px;
+    width: 160px;
+    height: 20px;
     -webkit-border-radius: 5px;
     -moz-border-radius: 5px;
     border-radius: 5px;
-    background: #f90;
+    background: #0c0;
 }
