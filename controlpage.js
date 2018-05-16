@@ -8,7 +8,6 @@ function ControlPageViewModel() {
     self.TriggerValue = ko.observable("");
 
     self.pushTrigger = function() {
-        //console.log(self.TriggerValue());
         send_trigger(self.TriggerValue());
     }
 }
@@ -226,7 +225,6 @@ function fail_fct(xhr, status, errorThrown) {
 
 // Sets the config of the server in the view
 function set_client_config(json) {
-    console.log("Setting client config.")
     // Reset cameras to "not recording"
     $.each(CPVM.ServerStatus().CamList(), function(i,item) {
         item.cfg_record(false);
@@ -258,7 +256,6 @@ function set_client_config(json) {
 
 // Sets the status of the server in the view
 function set_client_status(json) {
-    console.log("Setting client status.")
     CPVM.ServerStatus(new ServerStatus());
     CPVM.ServerStatus().StateId(json['Stateid']);
     $.each(json['Cams'], function(i,item) {

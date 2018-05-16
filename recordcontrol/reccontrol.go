@@ -70,6 +70,28 @@ func (rc *RecordControl) GetStatus() Status {
     return rc.Status
 }
 
+// Returns the status struct but without the field "Command" of the hardware
+func (rc *RecordControl) GetSimpleStatus() Status {
+    var retStatus Status
+    var cams []Hardware
+    for _,cam := range rc.Status.Cams {
+        cams = append(cams, Hardware{Id: cam.Id, Recording: cam.Recording, Hardware: cam.Hardware, Command: exec.Command("")})
+    }
+    var mics []Hardware
+    for _,mic := range rc.Status.Mics {
+        mics = append(mics, Hardware{Id: mic.Id, Recording: mic.Recording, Hardware: mic.Hardware, Command: exec.Command("")})
+    }
+
+    retStatus.Cams = cams
+    retStatus.Mics = mics
+    retStatus.Disk = rc.Status.Disk
+    retStatus.LocationOk = rc.Status.LocationOk
+    retStatus.GStreamerOk = rc.Status.GStreamerOk
+    retStatus.WebcamCaptureFilename = rc.Status.WebcamCaptureFilename
+    retStatus.Stateid = rc.Status.Stateid
+    return retStatus
+}
+
 // Returns the config struct
 func (rc *RecordControl) GetConfig() RecordConfig {
     return rc.Config
@@ -459,7 +481,7 @@ func (rc *RecordControl) TaskGetStatus() []byte {
         rc.Status.WebcamCaptureFilename = capture_fnames
     }
     // Marshal the current status into JSON
-    retVal, err := json.Marshal(rc.GetStatus())
+    retVal, err := json.Marshal(rc.GetSimpleStatus())
     if err != nil {
         log.Printf("ERROR: Error marshalling state to json; Message: %s", err)
         // If marshalling fails, return empty state
