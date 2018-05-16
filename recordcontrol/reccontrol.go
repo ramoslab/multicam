@@ -204,16 +204,24 @@ func (rc *RecordControl) CheckSavingLocation() bool {
 func (rc *RecordControl) CheckGstreamer() bool {
 
     rc.setState(7)
-    //Check if dead and unkillable GStreamer processes are running. Return "true" if no.
-    _, err := exec.Command("sh", "-c", "ps -aux | grep GStreamer").Output()
-
-    //fmt.Println("Result:",string(out))
+    //Check if any GStreamer processes are running 
+    out, err := exec.Command("sh", "-c", "ps -aux | grep gst-launch").Output()
     if err != nil {
-        fmt.Println(err)
+        log.Printf("WARNING: Could not check for running gstreamer processes. Message: %s",err)
+        return false
     }
 
+    var test_strs []string
+    test_strs = strings.Split(string(out),"\n")
 
-    return true
+    // The first two lines are the command spawned by this server (sh -c) and the actual command (ps -aux)
+    // The last line is an empty line
+    // If len is larger then 3 there are more processes running
+    if len(test_strs) > 3 {
+        return false
+    } else {
+        return true
+    }
 }
 
 // Start recording
