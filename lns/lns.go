@@ -13,32 +13,19 @@ import (
     "bitbucket.com/andrews2000/multicam/taskqueue"
 )
 
-////UDP SERVER
-
-// Defines the configuration of the server and its functions
-type RecUdpServer struct {
-    // UDP connection
-    Conn *net.UDPConn
-    // UDP address
-    Addr *net.UDPAddr
-    // Task manager
-    Tq taskqueue.TaskQueue
-    // Feedback channel from task queue
-    UdpFeedback chan []byte
-}
+//// TCP SERVER
 
 // Defines the configuration of the server and its functions
 type RecTcpServer struct {
-    // UDP connection
+    // TCP listener
     Conn net.Listener
-    // UDP address
-    Addr string
     // Task manager
     Tq taskqueue.TaskQueue
     // Feedback channel from task queue
-    UdpFeedback chan []byte
+    TcpFeedback chan []byte
 }
 
+// Handles connections to clients until something is written to the quit channel
 func (rtcps RecTcpServer) Run(q chan bool) {
 
     for {
@@ -59,135 +46,31 @@ func (rtcps RecTcpServer) Run(q chan bool) {
 // Handles a TCP connection
 func handleTcpConnection(rtcps RecTcpServer, conn net.Conn) {
     // Unmarshal what is on the buffer
-    //FIXME Error handling if buffer can't be read
     buf := make([]byte, 1024)
     for {
         n,err := conn.Read(buf)
         if err != nil {
+            // When the client closes the connection an EOF error occurs. In this case the connection will be closed.
             fmt.Println("Error reading from buffer", err)
-        }
-        if n == 0 {
             break
         }
         var creq map[string]interface{}
         errJson := json.Unmarshal(buf[0:n], &creq)
 
-        fmt.Println("Data received via TCP: ",string(buf[0:n]))
-
         if errJson != nil {
             log.Printf("ERROR: Could not unmarshal udp pacakge to json; Message: %s", errJson)
         }
 
-        fmt.Println("Command received via TCP: ",creq)
-
         // Parse command and put it on the task queue
-        com := parseHttpCommand(creq, rtcps.UdpFeedback)
-        fmt.Println("Command parsed: ",com)
+        com := parseHttpCommand(creq, rtcps.TcpFeedback)
 
         rtcps.Tq.Queue <- com
 
         var response []byte
-        response = <-rtcps.UdpFeedback
+        response = <-rtcps.TcpFeedback
 
         conn.Write(response)
-        //FIXME When do I have to close the connection?
-        //conn.Close()
     }
-}
-
-
-func (rudps RecUdpServer) Run(q chan bool) {
-
-    buf := make([]byte, 1024)
-
-    for {
-        select {
-            case <- q:
-                log.Printf("INFO: Stopping UDP listener.")
-            default:
-                // Get number of bytes on the buffer and client address
-                n, _, errUdp := rudps.Conn.ReadFromUDP(buf)
-
-                if errUdp != nil {
-                    log.Printf("ERROR: Could not read from UDP buffer", errUdp)
-                }
-
-                // Unmarshal what is on the buffer
-                var creq map[string]interface{}
-                errJson := json.Unmarshal(buf[0:n], &creq)
-
-                if errJson != nil {
-                    log.Printf("ERROR: Could not unmarshal udp pacakge to json; Message: %s", errJson)
-                }
-
-                // Parse command and put it on the task queue
-                //com := parseUdpCommand(creq, rudps.UdpFeedback)
-                com := parseHttpCommand(creq, rudps.UdpFeedback)
-
-                rudps.Tq.Queue <- com
-
-                log.Printf("INFO: Received %s", string(buf[0:n]))
-
-                // Send response to client
-                //NOTE The response should usually go unheard because if the package gets lost the client will likely block while waiting for the package to arrive
-                //response := <-rudps.UdpFeedback
-                //DEBUG
-                //fmt.Println("Response:",response)
-
-                //_,err = rudps.Conn.WriteToUDP([]byte(response), addr)
-
-                //if err != nil {
-                //    fmt.Println(err)
-                //}
-        }
-    }
-}
-
-//FIXME One function for parseCommands insted of UDP and HTTP separately
-// Parse commands being received via UDP and initiate execution of the commands
-func parseUdpCommand(creq map[string]interface{}, udpFeedback chan []byte) taskqueue.Task {
-    var retVal taskqueue.Task
-    switch creq["Command"] {
-    case "REQ":
-        // Type assertion for Data as map
-        creqData, ok := creq["Data"].(map[string]interface{})
-        if !ok {
-            //FIXME Error handling
-            fmt.Println("Error running type assertion.")
-        }
-        switch creqData["CmdType"] {
-        case "GETSTATE":
-            retVal = taskqueue.Task{Command: "GetState", Data: nil, FeedbackChannel: udpFeedback}
-        case "GETCONFIG":
-            retVal = taskqueue.Task{Command: "GetConfig", Data: nil, FeedbackChannel: udpFeedback}
-                default:
-                //FIXME Proper error handling (using error type)
-                retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: udpFeedback}
-            }
-        case "CTL":
-            creqData, ok := creq["Data"].(map[string]interface{})
-            if !ok {
-                //FIXME Error handling
-                fmt.Println("Error running type assertion.")
-            }
-            switch creqData["CmdType"] {
-                //TODO
-                case "PREPARE":
-                    retVal = taskqueue.Task{Command: "Preflight", Data: nil, FeedbackChannel: udpFeedback}
-                case "START":
-                    retVal = taskqueue.Task{Command: "StartRecording", Data: nil, FeedbackChannel: udpFeedback}
-                case "STOP":
-                    retVal = taskqueue.Task{Command: "StopRecording", Data: nil, FeedbackChannel: udpFeedback}
-            } //TODO Implement data
-        case "DAT":
-            fmt.Println("Data received.")
-            //TODO Implement
-        default:
-            //FIXME Proper error handling needed
-            fmt.Println("Invalid command received.")
-        }
-    return retVal
-    //TODO Implement exit (and maybe even shutdown commands
 }
 
 ////HTTP SERVER

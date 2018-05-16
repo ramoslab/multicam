@@ -3,6 +3,7 @@ package main
 
 import (
     "net"
+    "strconv"
     "bitbucket.com/andrews2000/multicam/recordcontrol"
     "bitbucket.com/andrews2000/multicam/lns"
     "bitbucket.com/andrews2000/multicam/taskqueue"
@@ -70,8 +71,8 @@ func main() {
     searchStringAudio := viper.GetString("Hardware.SearchStringAudio")
 
     // Get configuration for the server
-    //port := viper.GetInt("Server.Port")
-    address := viper.GetString("Server.Adress")
+    port := viper.GetInt("Server.Port")
+    address := viper.GetString("Server.Address")
 
     log.Print("INFO: Starting server.")
 
@@ -83,26 +84,23 @@ func main() {
     // Instantiate task manager 
     tq1 := taskqueue.TaskQueue{Queue: make(chan taskqueue.Task)}
 
-    // Instantiate the UDP Server
-    //serveUdp_addr := net.UDPAddr{Port: port, IP: net.ParseIP(address)}
-    //serveUdp_conn, err := net.ListenUDP("udp",&serveUdp_addr)
+    // Instantiate the TCP Server
 
-    //l, err := net.Listen("tcp", net.ParseIP(address)+":"+port)
-    l, err := net.Listen("tcp","127.0.0.1:9998")
+    l, err := net.Listen("tcp",address+":"+strconv.Itoa(port))
 
     if err != nil {
         log.Fatalf("FATAL: Could not create TCP server. Message: %s",err)
     }
 
-    //FIXME CLose TCP listener?
+    defer l.Close()
 
-    udpFeedback := make(chan []byte)
+    tcpFeedback := make(chan []byte)
 
     //serveUdp := lns.RecUdpServer{Conn: serveUdp_conn, Addr: &serveUdp_addr, Tq: tq1, UdpFeedback: udpFeedback}
-    serveTcp := lns.RecTcpServer{Conn: l, Addr: address, Tq: tq1, UdpFeedback: udpFeedback}
+    serveTcp := lns.RecTcpServer{Conn: l, Tq: tq1, TcpFeedback: tcpFeedback}
 
     // Goroutine control channel (for ending goroutine)
-    qudp := make(chan bool)
+    qtcp := make(chan bool)
 
     // Instantiate the HTTP Server
 
@@ -125,7 +123,7 @@ func main() {
     handler := co.Handler(mux)
 
     // Start the routine that listens over UDP
-    go serveTcp.Run(qudp)
+    go serveTcp.Run(qtcp)
     // Start the routine that serves HTTP
     go http.ListenAndServe(":8040", handler)
     // Start the task management routine
