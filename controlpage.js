@@ -1,5 +1,8 @@
 // Client side of the graphical web interface for the multicam server
 
+// Server IP
+serverip = "172.16.162.14"
+
 // ViewModel specification for knockout bindings
 function ControlPageViewModel() {
     var self = this;
@@ -96,7 +99,7 @@ function findMic(serverState,mic_id) {
 function get_status() {
 
     var config = {
-        url: "http://localhost:8040/request",
+        url: "http://"+serverip+":8040/request",
         data: JSON.stringify({"Command": "REQ", "Data": {"CmdType":"GETSTATUS"}}),
         type: "POST",
         contentType: "application/json", // Request
@@ -114,7 +117,7 @@ function get_status() {
 function get_config() {
 
     var config = {
-        url: "http://localhost:8040/request",
+        url: "http://"+serverip+":8040/request",
         data: JSON.stringify({"Command": "REQ", "Data": {"CmdType":"GETCONFIG"}}),
         type: "POST",
         contentType: "application/json", // Request
@@ -148,7 +151,7 @@ function set_config() {
     });
 
     var config = {
-        url: "http://localhost:8040/request",
+        url: "http://"+serverip+":8040/request",
         data: JSON.stringify({"Command": "POST", "Data": {"CmdType":"SETCONFIG", "Values": {"Cameras" : record_from_cam, "Microphones": record_from_mic, "RecFolder": CPVM.RecordingConfig().SavingLocation(), "Sid": CPVM.RecordingConfig().Sid()}}}),
         type: "POST",
         contentType: "application/json", // Request
@@ -168,7 +171,7 @@ function set_config() {
 function start_recording() {
 
     var config = {
-        url: "http://localhost:8040/request",
+        url: "http://"+serverip+":8040/request",
         data: JSON.stringify({"Command": "CTL", "Data": {"CmdType": "START"}}),
         type: "POST",
         contentType: "application/json", // Request
@@ -186,7 +189,7 @@ function start_recording() {
 function stop_recording() {
 
     var config = {
-        url: "http://localhost:8040/request",
+        url: "http://"+serverip+":8040/request",
         data: JSON.stringify({"Command": "CTL", "Data": {"CmdType": "STOP"}}),
         type: "POST",
         contentType: "application/json", // Request
@@ -206,7 +209,7 @@ function stop_recording() {
 function send_trigger(trigger_value) {
 
     var config = {
-        url: "http://localhost:8040/request",
+        url: "http://"+serverip+":8040/request",
         data: JSON.stringify({"Command": "DATA", "Data": {"Values": {"Trigger" : trigger_value}}}),
         type: "POST",
         contentType: "application/json", // Request
@@ -270,7 +273,6 @@ function set_client_status(json) {
     CPVM.ServerStatus().GStreamerOk(json['GStreamerOk']);
     CPVM.ServerStatus().SavingLocation(CPVM.RecordingConfig().SavingLocation());
     CPVM.ServerStatus().Sid(CPVM.RecordingConfig().Sid());
-
 }
 
 
