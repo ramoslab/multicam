@@ -40,7 +40,6 @@ type RecTcpServer struct {
 }
 
 func (rtcps RecTcpServer) Run(q chan bool) {
-    buf := make([]byte, 1024)
 
     for {
         select {
@@ -50,39 +49,52 @@ func (rtcps RecTcpServer) Run(q chan bool) {
             conn, errTcp := rtcps.Conn.Accept()
             if errTcp != nil {
                 log.Printf("ERROR: Error accepting client via TCP. Message: %s",errTcp)
+            } else {
+                go handleTcpConnection(rtcps, conn)
             }
-            // Unmarshal what is on the buffer
-            //FIXME Error handling if buffer can't be read
-            n,err := conn.Read(buf)
-            if err != nil {
-                fmt.Println("Error reading from buffer", err)
-            }
-            var creq map[string]interface{}
-            errJson := json.Unmarshal(buf[0:n], &creq)
-
-            fmt.Println("Data received via TCP: ",string(buf[0:n]))
-
-            if errJson != nil {
-                log.Printf("ERROR: Could not unmarshal udp pacakge to json; Message: %s", errJson)
-            }
-
-            fmt.Println("Command received via TCP: ",creq)
-
-            // Parse command and put it on the task queue
-            com := parseHttpCommand(creq, rtcps.UdpFeedback)
-            fmt.Println("Command parsed: ",com)
-
-            rtcps.Tq.Queue <- com
-
-            var response []byte
-            response = <-rtcps.UdpFeedback
-
-            conn.Write(response)
-            //FIXME When do I have to close the connection?
-            conn.Close()
         }
     }
 }
+
+// Handles a TCP connection
+func handleTcpConnection(rtcps RecTcpServer, conn net.Conn) {
+    // Unmarshal what is on the buffer
+    //FIXME Error handling if buffer can't be read
+    buf := make([]byte, 1024)
+    for {
+        n,err := conn.Read(buf)
+        if err != nil {
+            fmt.Println("Error reading from buffer", err)
+        }
+        if n == 0 {
+            break
+        }
+        var creq map[string]interface{}
+        errJson := json.Unmarshal(buf[0:n], &creq)
+
+        fmt.Println("Data received via TCP: ",string(buf[0:n]))
+
+        if errJson != nil {
+            log.Printf("ERROR: Could not unmarshal udp pacakge to json; Message: %s", errJson)
+        }
+
+        fmt.Println("Command received via TCP: ",creq)
+
+        // Parse command and put it on the task queue
+        com := parseHttpCommand(creq, rtcps.UdpFeedback)
+        fmt.Println("Command parsed: ",com)
+
+        rtcps.Tq.Queue <- com
+
+        var response []byte
+        response = <-rtcps.UdpFeedback
+
+        conn.Write(response)
+        //FIXME When do I have to close the connection?
+        //conn.Close()
+    }
+}
+
 
 func (rudps RecUdpServer) Run(q chan bool) {
 
