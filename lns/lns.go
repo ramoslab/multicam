@@ -62,7 +62,7 @@ func handleTcpConnection(rtcps RecTcpServer, conn net.Conn) {
         }
 
         // Parse command and put it on the task queue
-        com := parseHttpCommand(creq, rtcps.TcpFeedback)
+        com := parseCommand(creq, rtcps.TcpFeedback)
 
         rtcps.Tq.Queue <- com
 
@@ -132,7 +132,7 @@ func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Reque
     }
 
     // Parse command and put it on the task queue
-    currCmd := parseHttpCommand(creq, rhttps.HttpFeedback)
+    currCmd := parseCommand(creq, rhttps.HttpFeedback)
     rhttps.Tq.Queue <- currCmd
     // This is used to send the http response back to the client before the client requestHandler returns
     var feedback []byte
@@ -148,7 +148,7 @@ func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Reque
 }
 
 // Parse commands received via HTTP
-func parseHttpCommand(creq map[string]interface{}, httpFeedback chan []byte) taskqueue.Task {
+func parseCommand(creq map[string]interface{}, httpFeedback chan []byte) taskqueue.Task {
     var retVal taskqueue.Task
     switch creq["Command"] {
     case "REQ":
