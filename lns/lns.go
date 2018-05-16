@@ -27,6 +27,63 @@ type RecUdpServer struct {
     UdpFeedback chan []byte
 }
 
+// Defines the configuration of the server and its functions
+type RecTcpServer struct {
+    // UDP connection
+    Conn net.Listener
+    // UDP address
+    Addr string
+    // Task manager
+    Tq taskqueue.TaskQueue
+    // Feedback channel from task queue
+    UdpFeedback chan []byte
+}
+
+func (rtcps RecTcpServer) Run(q chan bool) {
+    buf := make([]byte, 1024)
+
+    for {
+        select {
+        case <- q:
+            log.Printf("INFO: Stopping TCP listener.")
+        default:
+            conn, errTcp := rtcps.Conn.Accept()
+            if errTcp != nil {
+                log.Printf("ERROR: Error accepting client via TCP. Message: %s",errTcp)
+            }
+            // Unmarshal what is on the buffer
+            //FIXME Error handling if buffer can't be read
+            n,err := conn.Read(buf)
+            if err != nil {
+                fmt.Println("Error reading from buffer", err)
+            }
+            var creq map[string]interface{}
+            errJson := json.Unmarshal(buf[0:n], &creq)
+
+            fmt.Println("Data received via TCP: ",string(buf[0:n]))
+
+            if errJson != nil {
+                log.Printf("ERROR: Could not unmarshal udp pacakge to json; Message: %s", errJson)
+            }
+
+            fmt.Println("Command received via TCP: ",creq)
+
+            // Parse command and put it on the task queue
+            com := parseHttpCommand(creq, rtcps.UdpFeedback)
+            fmt.Println("Command parsed: ",com)
+
+            rtcps.Tq.Queue <- com
+
+            var response []byte
+            response = <-rtcps.UdpFeedback
+
+            conn.Write(response)
+            //FIXME When do I have to close the connection?
+            conn.Close()
+        }
+    }
+}
+
 func (rudps RecUdpServer) Run(q chan bool) {
 
     buf := make([]byte, 1024)
@@ -52,7 +109,9 @@ func (rudps RecUdpServer) Run(q chan bool) {
                 }
 
                 // Parse command and put it on the task queue
-                com := parseUdpCommand(creq, rudps.UdpFeedback)
+                //com := parseUdpCommand(creq, rudps.UdpFeedback)
+                com := parseHttpCommand(creq, rudps.UdpFeedback)
+
                 rudps.Tq.Queue <- com
 
                 log.Printf("INFO: Received %s", string(buf[0:n]))
@@ -178,7 +237,7 @@ func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Reque
     }
 
     // Parse command and put it on the task queue
-    currCmd := parseHttpCommand(creq, &w, rhttps.HttpFeedback)
+    currCmd := parseHttpCommand(creq, rhttps.HttpFeedback)
     rhttps.Tq.Queue <- currCmd
     // This is used to send the http response back to the client before the client requestHandler returns
     var feedback []byte
@@ -194,8 +253,7 @@ func (rhttps *RecHttpServer) RequestHandler(w http.ResponseWriter, r *http.Reque
 }
 
 // Parse commands received via HTTP
-//func parseHttpCommand(creq clientRequest, hRespWriter *http.ResponseWriter, httpFeedback chan []byte) taskqueue.Task {
-func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWriter, httpFeedback chan []byte) taskqueue.Task {
+func parseHttpCommand(creq map[string]interface{}, httpFeedback chan []byte) taskqueue.Task {
     var retVal taskqueue.Task
     switch creq["Command"] {
     case "REQ":
@@ -236,7 +294,6 @@ func parseHttpCommand(creq map[string]interface{}, hRespWriter *http.ResponseWri
             default:
                 log.Print("WARNING: Command not understood (POST).")
                 retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
-
         }
 
     case "CTL":
