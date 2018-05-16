@@ -4,6 +4,7 @@ package lns
 
 import (
     "net"
+    "io"
     "fmt"
     "log"
     "time"
@@ -49,11 +50,17 @@ func handleTcpConnection(rtcps RecTcpServer, conn net.Conn) {
     buf := make([]byte, 1024)
     for {
         n,err := conn.Read(buf)
+
         if err != nil {
             // When the client closes the connection an EOF error occurs. In this case the connection will be closed.
-            fmt.Println("Error reading from buffer", err)
+            log.Printf("WARNING: Error reading from buffer. Message: %s",err)
+            if err == io.EOF {
+                log.Printf("INFO: EOF detected. Client disconnected.")
+            }
+            conn.Close()
             break
         }
+
         var creq map[string]interface{}
         errJson := json.Unmarshal(buf[0:n], &creq)
 
