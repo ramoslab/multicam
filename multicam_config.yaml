@@ -1,4 +1,5 @@
 Server:
+    ServeFrom: localhost
     Address: 172.16.162.14
     Port: 9998
 Recording:
@@ -11,6 +12,6 @@ Recording:
         - 1
         - 3
     SID: None
-    RecFolder: /home/andrews/recordings/
+    RecFolder: /mnt/recordings/
 Hardware:
     SearchStringAudio: HD_Pro

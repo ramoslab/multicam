@@ -72,7 +72,7 @@ func main() {
 
     // Get configuration for the server
     port := viper.GetInt("Server.Port")
-    address := viper.GetString("Server.Address")
+    address := viper.GetString("Server.ServeFrom")
 
     log.Print("INFO: Starting server.")
 
