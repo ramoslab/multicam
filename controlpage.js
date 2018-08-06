@@ -1,7 +1,7 @@
 // Client side of the graphical web interface for the multicam server
 
 // Server IP
-serverip = "172.16.162.14"
+serverip = location.hostname;
 
 // ViewModel specification for knockout bindings
 function ControlPageViewModel() {
