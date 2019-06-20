@@ -186,7 +186,8 @@ func (rc *RecordControl) CheckSavingLocation() bool {
     b := strings.HasSuffix(rc.Config.RecFolder, "/")
 
     if !b {
-	    rc.Config.RecFolder = rc.Config.RecFolder + "/"
+        log.Print("INFO: Appending '/' to recording folder.")
+	rc.Config.RecFolder = rc.Config.RecFolder + "/"
     }
 
     // Check if saving location as specified in RecordConfig is available, if not, create it. Return false if the location is not available and could not be created.
@@ -421,7 +422,7 @@ func (rc *RecordControl) CheckConfig(config RecordConfig) RecordConfig {
         config.Sid = fallback_config.Sid
     }
     // Check saving location
-    var validFolder = regexp.MustCompile(`^(/?\.?[a-z0-9_-]+)+/{1}$`)
+    var validFolder = regexp.MustCompile(`^(\/?\.?[a-z0-9_-]+)+\/?$`)
     if !validFolder.MatchString(config.RecFolder) {
         config.RecFolder = fallback_config.RecFolder
     }

@@ -23,13 +23,12 @@ func main() {
     viper.SetConfigName(path_defintions_file)
     viper.AddConfigPath(path_defintions_path)
 
-    fmt.Println("Looking for path definitions in" + path_defintions_file + " at: " + path_defintions_path)
-
     // Read configuration
     err := viper.ReadInConfig()
     if err != nil {
         fmt.Println("ERROR: Could not find or read config: %s", err)
         fmt.Println(err)
+        fmt.Println("Expected config file " + path_defintions_file + " to at " + path_defintions_path)
         os.Exit(2)
     }
 
