@@ -179,7 +179,15 @@ func (rc *RecordControl) CheckDiskspace() Disk {
 func (rc *RecordControl) CheckSavingLocation() bool {
     rc.setState(6)
     var retVal bool
-    // Check if saving location as specified in RecordConfig is available, if not create it. Return false if the location is not available and could not be created.
+
+    // Check if saving location ends with "/" and if not, append it.
+    b := strings.HasSuffix(rc.Config.RecFolder, "/")
+
+    if !b {
+	    rc.Config.RecFolder = rc.Config.RecFolder + "/"
+    }
+
+    // Check if saving location as specified in RecordConfig is available, if not, create it. Return false if the location is not available and could not be created.
     _,err := os.Stat(rc.Config.RecFolder)
     if err == nil {
         retVal = true

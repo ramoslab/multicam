@@ -1,6 +1,6 @@
 Server:
     ServeFrom: localhost
-    Address: 172.16.162.14
+    Address: 127.0.0.1
     Port: 9998
 Recording:
     Cameras:
