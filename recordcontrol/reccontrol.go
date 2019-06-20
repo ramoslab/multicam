@@ -39,6 +39,7 @@ type RecordControl struct {
     SearchStringAudio string
     //Mutex for locking when multiple goroutines running recording commands access record control
     mux sync.Mutex
+    StaticFilesDir string
 }
 
 // Setters
@@ -433,13 +434,14 @@ func (rc *RecordControl) CheckConfig(config RecordConfig) RecordConfig {
 
 func (rc RecordControl) CaptureFrame() []string {
     // Delete all webcam captures files
-    captures, err := ioutil.ReadDir("static/captures")
+    captures_dir := rc.StaticFilesDir + "/captures/"
+    captures, err := ioutil.ReadDir(captures_dir)
     if err != nil {
         log.Printf("ERROR: Could not read capture directory; Message: %s",err)
     }
     for _, file := range captures {
         if strings.HasPrefix(file.Name(),"captmpv") {
-            os.Remove("static/captures/"+file.Name())
+            os.Remove(captures_dir + file.Name())
         }
     }
 
@@ -449,18 +451,19 @@ func (rc RecordControl) CaptureFrame() []string {
 
         // Generate file name with time
         t := time.Now()
-        fname := fmt.Sprintf("static/captures/captmpv%d_%s.jpg",i,t.Format("060102_150405"))
+        fname_server := fmt.Sprintf(captures_dir + "captmpv%d_%s.jpg",i,t.Format("060102_150405"))
+        fname_client := fmt.Sprintf("/static/captures/captmpv%d_%s.jpg",i,t.Format("060102_150405"))
 
         // Capture frame 
-        argstr := []string{"--jpeg","80","--save",fname,"--device",cam.Hardware}
+        argstr := []string{"--jpeg","80","--save",fname_server,"--device",cam.Hardware}
         cmd := exec.Command("fswebcam",argstr...)
         _, err = cmd.Output()
         if err != nil {
-            log.Printf("ERROR: Could not capture from for camera %s; Message: %s",cam.Hardware,err)
+            log.Printf("ERROR: Could not capture from camera %s; Message: %s",cam.Hardware,err)
             output[i] = ""
         } else {
-            log.Printf("INFO: Captured frame: %s",fname)
-            output[i] = fname
+            log.Printf("INFO: Captured frame: %s",fname_server)
+            output[i] = fname_client
         }
     }
     return output

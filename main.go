@@ -90,7 +90,7 @@ func main() {
     // Instantiate record control data configuration
     recCfg := recordcontrol.RecordConfig{Cameras: cams, Microphones: mics, Sid: sid, RecFolder: recfolder}
     // Instantiate record control data model 
-    rec1 := recordcontrol.RecordControl{Config: recCfg, SearchStringAudio: searchStringAudio}
+    rec1 := recordcontrol.RecordControl{Config: recCfg, SearchStringAudio: searchStringAudio, StaticFilesDir: static_dir}
     rec1.Preflight()
     // Instantiate task manager 
     tq1 := taskqueue.TaskQueue{Queue: make(chan taskqueue.Task)}
