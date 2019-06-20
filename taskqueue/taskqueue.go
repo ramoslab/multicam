@@ -26,6 +26,7 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
         case "GetConfig":
             cmd.FeedbackChannel <- rc.TaskGetConfig()
         case "SetConfig":
+            // Convert cam and mic lists
             data := cmd.Data.(map[string]interface{})
             cams_cfg, cams_ok := data["Cameras"].([]interface{})
             mics_cfg, mics_ok := data["Microphones"].([]interface{})
@@ -52,7 +53,22 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
                     log.Print("WARNING Error running type assertion (TQ:SetConfig).")
                     cmd.FeedbackChannel <- []byte("")
                 }
-            recConfig := recordcontrol.RecordConfig{Cameras: cams, Microphones: mics, Sid: data["Sid"].(string), RecFolder: data["RecFolder"].(string)}
+
+                // Force subject id to be a string 
+                sid, ok := data["Sid"].(string)
+                if !ok {
+                    log.Printf("WARNING: subject id is not a string.")
+                    sid = "None"
+                }
+
+                // Force RecFolder to be a string 
+                recfolder, ok := data["RecFolder"].(string)
+                if !ok {
+                    log.Printf("WARNING: RecFolder id is not a string.")
+                    recfolder = "None"
+                }
+
+                recConfig := recordcontrol.RecordConfig{Cameras: cams, Microphones: mics, Sid: sid, RecFolder: recfolder}
             cmd.FeedbackChannel <- rc.TaskSetConfig(recConfig)
             }
         case "StartRecording":
