@@ -28,6 +28,7 @@ function ServerStatus() {
     self.Disk = ko.observable(new Disk(0,0));
     self.SavingLocationOk = ko.observable(false);
     self.GStreamerOk = ko.observable(false);
+    self.Time = ko.observable();
 
     self.SavingLocation = ko.observable("");
     self.Sid = ko.observable("(unknown subject)");
@@ -291,6 +292,7 @@ function set_client_status(json) {
     CPVM.ServerStatus().GStreamerOk(json['GStreamerOk']);
     CPVM.ServerStatus().SavingLocation(CPVM.RecordingConfig().SavingLocation());
     CPVM.ServerStatus().Sid(CPVM.RecordingConfig().Sid());
+    CPVM.ServerStatus().Time(json['Time']);
 }
 
 

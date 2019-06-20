@@ -20,6 +20,7 @@
         <h2>Server status</h2>
         <div class="status">
             <ul>
+            <li>Server time: <span data-bind="text: ServerStatus().Time()"></span></li>
             <li>Diskspace: <span data-bind="text: ServerStatus().Disk().space_av()"></span>/<span data-bind="text: ServerStatus().Disk().space_tot()"></span>&nbsp;GB</li>
             <li>SavingLocation: <span data-bind="if: ServerStatus().SavingLocationOk()" class="green_notice">OK</span>
                                 <span data-bind="ifnot: ServerStatus().SavingLocationOk()" class="red_notice">NOTOK</span></li>

@@ -89,6 +89,7 @@ func (rc *RecordControl) GetSimpleStatus() Status {
     retStatus.GStreamerOk = rc.Status.GStreamerOk
     retStatus.WebcamCaptureFilename = rc.Status.WebcamCaptureFilename
     retStatus.Stateid = rc.Status.Stateid
+    retStatus.Time = time.Now().Format(time.RFC1123)
     return retStatus
 }
 
@@ -588,6 +589,7 @@ type Status struct {
     GStreamerOk bool
     WebcamCaptureFilename []string
     Stateid int
+    Time string
 }
 
 type Hardware struct {

@@ -16,22 +16,24 @@ import (
 )
 
 func main() {
-    // Look for path definition file
+    // Look for main config file
     path_defintions_path := os.Getenv("HOME") + "/.multicam/"
     path_defintions_file := "config"
+
     viper.SetConfigName(path_defintions_file)
     viper.AddConfigPath(path_defintions_path)
+
     fmt.Println("Looking for path definitions in" + path_defintions_file + " at: " + path_defintions_path)
 
+    // Read configuration
     err := viper.ReadInConfig()
     if err != nil {
-        fmt.Println("ERROR: Could not find or read config.")
+        fmt.Println("ERROR: Could not find or read config: %s", err)
         fmt.Println(err)
         os.Exit(2)
     }
 
-    log_location := viper.GetString("log_location")
-    config_location := viper.GetString("config_location")
+    log_location := viper.GetString("Log.Location")
 
     // Set up log
     f, err := os.OpenFile(log_location,os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
@@ -49,16 +51,6 @@ func main() {
     log.Print("INFO: Reading config.")
 
     // Start up Server
-
-    // Read configuration
-    viper.SetConfigName("multicam_config")
-    viper.AddConfigPath(config_location)
-
-    err = viper.ReadInConfig()
-    if err != nil {
-        log.Fatalf("Problem reading config: %s",err)
-    }
-
     // Get configuration for the recording
     sid := viper.GetString("Recording.SID")
     recfolder := viper.GetString("Recording.RecFolder")
