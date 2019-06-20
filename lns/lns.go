@@ -230,6 +230,20 @@ func parseCommand(creq map[string]interface{}, httpFeedback chan []byte) taskque
         // Add current time to payload
         payload["recvTime"] = time.Now()
         retVal = taskqueue.Task{Command: "Data", Data: payload, FeedbackChannel: httpFeedback}
+    case "SYS":
+        creqData, ok := creq["Data"].(map[string]interface{})
+        if !ok {
+            log.Printf("ERROR: Error running type assertion (SYS).")
+            retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
+            return retVal
+        }
+        switch creqData["CmdType"] {
+        case "SHUTDOWN":
+            retVal = taskqueue.Task{Command: "Shutdown", Data: nil, FeedbackChannel: httpFeedback}
+        default:
+            log.Print("WARNING: Command not understood (CTL).")
+            retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
+        }
     default:
         retVal = taskqueue.Task{Command: "ReturnError", Data: nil, FeedbackChannel: httpFeedback}
     }

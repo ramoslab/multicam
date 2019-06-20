@@ -5,6 +5,7 @@ import (
     "bitbucket.com/andrews2000/multicam/recordcontrol"
     "log"
     "time"
+    "os/exec"
 )
 
 type TaskQueue struct {
@@ -71,6 +72,16 @@ func (tq TaskQueue) ExecuteTask(rc *recordcontrol.RecordControl) {
                 }
             } else {
                 cmd.FeedbackChannel <- []byte("")
+            }
+        case "Shutdown":
+            _ = rc.TaskStopRecording()
+            cmd.FeedbackChannel <- []byte("")
+            shutdown_cmd := exec.Command("shutdown","-h","now")
+            err := shutdown_cmd.Run()
+            if err != nil {
+                log.Printf("WARNING: Could not shutdown (%s)",err)
+            } else {
+                log.Printf("INFO: Shutting down server.")
             }
         case "ReturnError":
             cmd.FeedbackChannel <- []byte("")

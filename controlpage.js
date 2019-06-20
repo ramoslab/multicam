@@ -13,6 +13,10 @@ function ControlPageViewModel() {
     self.pushTrigger = function() {
         send_trigger(self.TriggerValue());
     }
+
+    self.shutDown = function() {
+        shutdown();
+    }
 }
 
 // The actual status of the server
@@ -211,6 +215,20 @@ function send_trigger(trigger_value) {
     var config = {
         url: "http://"+serverip+":8040/request",
         data: JSON.stringify({"Command": "DATA", "Data": {"Values": {"Trigger" : trigger_value}}}),
+        type: "POST",
+        contentType: "application/json", // Request
+        dataType: "json" // Response
+    };
+
+    $.ajax(config).fail(fail_fct);
+}
+
+// Sends the shutdown command to the server 
+function shutdown() { 
+
+    var config = {
+        url: "http://"+serverip+":8040/request",
+        data: JSON.stringify({"Command": "SYS", "Data": {"CmdType": "SHUTDOWN"}}),
         type: "POST",
         contentType: "application/json", // Request
         dataType: "json" // Response
