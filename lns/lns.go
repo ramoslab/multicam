@@ -89,8 +89,8 @@ type Page struct {
 }
 
 // Load a page file from disk
-func loadPage() (*Page, error) {
-    filename := "static/controlpage.html"
+func loadPage(static_files_dir string) (*Page, error) {
+    filename := static_files_dir + "/controlpage.html"
     body, err := ioutil.ReadFile(filename)
     if err != nil {
         return nil, err
@@ -99,8 +99,8 @@ func loadPage() (*Page, error) {
 }
 
 // Handle the static main html page
-func PageHandler(w http.ResponseWriter, r *http.Request) {
-    p, err := loadPage()
+func (rhttps *RecHttpServer) PageHandler(w http.ResponseWriter, r *http.Request) {
+    p, err := loadPage(rhttps.Static_files_dir)
     if err != nil {
         log.Printf("ERROR: Error loading static page; Message: %s",err)
         http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -115,6 +115,8 @@ type RecHttpServer struct {
     Tq taskqueue.TaskQueue
     // Feedback channel from task queue
     HttpFeedback chan []byte
+    // Location of the static files
+    Static_files_dir string
 }
 
 type clientRequest struct {

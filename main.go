@@ -91,6 +91,7 @@ func main() {
     // Get configuration for the server
     port := viper.GetInt("Server.Port")
     address := viper.GetString("Server.ServeFrom")
+    static_dir := viper.GetString("Server.StaticDir")
 
     log.Print("INFO: Starting server.")
 
@@ -124,13 +125,13 @@ func main() {
 
     httpFeedback := make(chan []byte)
 
-    serveHttp := lns.RecHttpServer{Tq: tq1, HttpFeedback: httpFeedback}
+    serveHttp := lns.RecHttpServer{Tq: tq1, HttpFeedback: httpFeedback, Static_files_dir: static_dir}
 
     mux := http.NewServeMux()
 
     mux.HandleFunc("/request", serveHttp.RequestHandler)
-    mux.HandleFunc("/", lns.PageHandler)
-    mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+    mux.HandleFunc("/", serveHttp.PageHandler)
+    mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(static_dir))))
 
     co := cors.New(cors.Options{
         AllowedOrigins: []string{"*"},
