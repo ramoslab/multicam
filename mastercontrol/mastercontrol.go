@@ -4,9 +4,9 @@ package main
 import (
     "net"
     "strconv"
-    "bitbucket.com/andrews2000/multicam/recordcontrol"
-    "bitbucket.com/andrews2000/multicam/lns"
-    "bitbucket.com/andrews2000/multicam/taskqueue"
+    "bitbucket.org/andrews2000/multicam/recordcontrol"
+    "bitbucket.org/andrews2000/multicam/lns"
+    "bitbucket.org/andrews2000/multicam/taskqueue"
     "net/http"
     "github.com/rs/cors"
     "github.com/spf13/viper"
@@ -16,7 +16,7 @@ import (
 
 func main() {
     // Set up log
-    f, err := os.OpenFile("multicam.log",os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+    f, err := os.OpenFile("/home/andrews/multicam.log",os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 
     if err != nil {
         log.Fatal(err)
@@ -33,7 +33,7 @@ func main() {
     // Start up Server
 
     // Read configuration
-    viper.SetConfigName("multicam_config")
+    viper.SetConfigName("/home/andrews/arbeit/project/multicam/code/multicam_config")
     viper.AddConfigPath(".")
 
     err = viper.ReadInConfig()
